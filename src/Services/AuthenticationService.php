@@ -86,6 +86,8 @@ class AuthenticationService
     public function getCredentials(string $nip): ?Credential
     {
         return Credential::forEnvironmentAndNip($this->environment, $nip)
+            ->withCertificate()
+            ->orderByDesc('updated_at')
             ->first();
     }
 

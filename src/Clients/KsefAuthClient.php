@@ -64,8 +64,11 @@ class KsefAuthClient
      */
     public function authenticate(Credentials $credentials, string $nip): AuthenticationResponse
     {
-        // Sprawdź czy istnieją poprzednie poświadczenia
-        $existingCredential = Credential::forEnvironmentAndNip($this->environment, $nip)->first();
+        // Weź pierwszy aktualny rekord poświadczeń dla NIP+środowisko
+        $existingCredential = Credential::forEnvironmentAndNip($this->environment, $nip)
+            ->withCertificate()
+            ->orderByDesc('updated_at')
+            ->first();
 
         // Jeśli challenge token istnieje i jeszcze jest ważny, możemy go użyć
         if ($existingCredential && ! $this->isChallengeTokenExpired($existingCredential)) {
@@ -86,7 +89,7 @@ class KsefAuthClient
         $authResponse = $this->authorizeSession($credentials, $challengeToken);
 
         // Zapisz w bazie
-        $this->saveCredentialsToDatabase($nip, $authResponse);
+        $this->saveCredentialsToDatabase($credentials, $authResponse);
 
         return $authResponse;
     }
@@ -236,16 +239,27 @@ class KsefAuthClient
      * @param AuthenticationResponse $authResponse
      * @return Credential
      */
-    private function saveCredentialsToDatabase(string $nip, AuthenticationResponse $authResponse): Credential
+    private function saveCredentialsToDatabase(Credentials $credentials, AuthenticationResponse $authResponse): Credential
     {
-        $credential = Credential::forEnvironmentAndNip($this->environment, $nip)->first();
+        $credential = Credential::forEnvironmentAndNip($this->environment, $credentials->nip)
+            ->orderByDesc('updated_at')
+            ->first();
+
+        $certificateContent = $this->readFileIfExists($credentials->certificatePath);
+        $privateKeyContent = $this->readFileIfExists($credentials->privateKeyPath);
 
         if ($credential) {
             // Aktualizuj istniejące poświadczenia
             $credential->update([
+                'api_url' => $this->apiUrl,
                 'ksef_token_encrypted' => $authResponse->challengeToken,
                 'access_token_encrypted' => $authResponse->accessToken,
                 'refresh_token_encrypted' => $authResponse->refreshToken,
+                'certificate_encrypted' => $certificateContent,
+                'private_key_encrypted' => $privateKeyContent,
+                'certificate_password_encrypted' => $credentials->certificatePassword,
+                'challenge_token_received_at' => $authResponse->challengeTokenReceivedAt,
+                'challenge_token_expires_at' => $authResponse->challengeTokenReceivedAt->copy()->addMinutes($this->challengeTokenLifetime),
                 'token_expires_at' => $authResponse->tokenExpiresAt,
                 'meta' => [
                     'challenge_token_received_at' => $authResponse->challengeTokenReceivedAt->toIso8601String(),
@@ -259,16 +273,39 @@ class KsefAuthClient
         // Utwórz nowe poświadczenia
         return Credential::create([
             'environment' => $this->environment,
-            'nip' => $nip,
+            'nip' => $credentials->nip,
+            'api_url' => $this->apiUrl,
             'ksef_token_encrypted' => $authResponse->challengeToken,
             'access_token_encrypted' => $authResponse->accessToken,
             'refresh_token_encrypted' => $authResponse->refreshToken,
+            'certificate_encrypted' => $certificateContent,
+            'private_key_encrypted' => $privateKeyContent,
+            'certificate_password_encrypted' => $credentials->certificatePassword,
+            'challenge_token_received_at' => $authResponse->challengeTokenReceivedAt,
+            'challenge_token_expires_at' => $authResponse->challengeTokenReceivedAt->copy()->addMinutes($this->challengeTokenLifetime),
             'token_expires_at' => $authResponse->tokenExpiresAt,
             'meta' => [
                 'challenge_token_received_at' => $authResponse->challengeTokenReceivedAt->toIso8601String(),
                 'first_auth_at' => now()->toIso8601String(),
             ],
         ]);
+    }
+
+    /**
+     * Odczytaj plik jeśli istnieje.
+     *
+     * @param string $path
+     * @return string|null
+     */
+    private function readFileIfExists(string $path): ?string
+    {
+        if ($path === '' || ! is_file($path) || ! is_readable($path)) {
+            return null;
+        }
+
+        $content = file_get_contents($path);
+
+        return $content === false ? null : $content;
     }
 
     /**

@@ -16,7 +16,7 @@ php artisan ksef:generate-key
 # 3. Uruchom migracje
 php artisan migrate
 
-# 4. Zapisz poświadczenia (environment + api_url) w tabeli ksef_credentials
+# 4. Zapisz poświadczenia (environment + api_url + certyfikat) w tabeli ksef_credentials
 
 # Gotowe! Możesz teraz korzystać z modeli Credential i Invoice
 ```
@@ -107,7 +107,7 @@ KSEF_CREDENTIALS_TABLE=ksef_credentials
 KSEF_INVOICES_TABLE=ksef_invoices
 ```
 
-`environment` oraz `api_url` przechowuj w bazie danych w tabeli `ksef_credentials` (kolumny `environment`, `api_url`) per NIP.
+`environment` oraz `api_url` przechowuj w bazie danych w tabeli `ksef_credentials` per NIP, razem z certyfikatem i kluczem prywatnym (kolumny `certificate_encrypted`, `private_key_encrypted`, `certificate_password_encrypted`).
 
 ### Opis parametrów
 
@@ -148,6 +148,9 @@ Credential::create([
     'environment' => 'demo',
     'api_url' => 'https://api-demo.ksef.mf.gov.pl/v2',
     'nip' => '1234567890',
+    'certificate_encrypted' => $certificatePem,
+    'private_key_encrypted' => $privateKeyPem,
+    'certificate_password_encrypted' => $certificatePassword,
 ]);
 ```
 
@@ -298,12 +301,16 @@ Przechowuje poświadczenia KSeF dla pary `environment + nip`.
 use Labapawel\KsefApi\Models\Credential;
 
 // Szukaj poświadczeń
-$credential = Credential::forEnvironmentAndNip('demo', '1234567890')->first();
+$credential = Credential::forEnvironmentAndNip('demo', '1234567890')
+    ->withCertificate()
+    ->orderByDesc('updated_at')
+    ->first();
 
 // Dostępne scopes
 Credential::environment('demo')->get();
 Credential::nip('1234567890')->get();
 Credential::apiUrl('https://ksef-demo.mf.gov.pl/api')->get();
+Credential::withCertificate()->get();
 Credential::forEnvironmentAndNip('demo', '1234567890')->first();
 Credential::validToken()->get();              // tylko z ważnym access tokenem
 Credential::validChallengeToken()->get();     // tylko z ważnym challenge tokenem

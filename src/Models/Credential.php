@@ -107,6 +107,20 @@ class Credential extends Model
     }
 
     /**
+     * Filtruj poświadczenia które mają komplet certyfikatu.
+     *
+     * @param Builder<Credential> $query
+     * @return Builder<Credential>
+     */
+    public function scopeWithCertificate(Builder $query): Builder
+    {
+        return $query
+            ->whereNotNull('certificate_encrypted')
+            ->whereNotNull('private_key_encrypted')
+            ->whereNotNull('certificate_password_encrypted');
+    }
+
+    /**
      * Filtruj poświadczenia dla danego URL API.
      *
      * @param Builder<Credential> $query
