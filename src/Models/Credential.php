@@ -107,6 +107,40 @@ class Credential extends Model
     }
 
     /**
+     * Filtruj poświadczenia dla danego URL API.
+     *
+     * @param Builder<Credential> $query
+     * @param string $apiUrl
+     * @return Builder<Credential>
+     */
+    public function scopeApiUrl(Builder $query, string $apiUrl): Builder
+    {
+        return $query->where('api_url', $apiUrl);
+    }
+
+    /**
+     * Filtruj poświadczenia z ważnym access tokenem.
+     *
+     * @param Builder<Credential> $query
+     * @return Builder<Credential>
+     */
+    public function scopeValidToken(Builder $query): Builder
+    {
+        return $query->where('token_expires_at', '>', now());
+    }
+
+    /**
+     * Filtruj poświadczenia z ważnym challenge tokenem.
+     *
+     * @param Builder<Credential> $query
+     * @return Builder<Credential>
+     */
+    public function scopeValidChallengeToken(Builder $query): Builder
+    {
+        return $query->where('challenge_token_expires_at', '>', now());
+    }
+
+    /**
      * Sprawdź czy token dostępu wygasł.
      *
      * @return bool
@@ -128,5 +162,29 @@ class Credential extends Model
     public function isTokenValid(): bool
     {
         return ! $this->isTokenExpired();
+    }
+
+    /**
+     * Sprawdź czy challenge token wygasł.
+     *
+     * @return bool
+     */
+    public function isChallengeTokenExpired(): bool
+    {
+        if ($this->challenge_token_expires_at === null) {
+            return true;
+        }
+
+        return $this->challenge_token_expires_at->isPast();
+    }
+
+    /**
+     * Sprawdź czy challenge token jest jeszcze ważny.
+     *
+     * @return bool
+     */
+    public function isChallengeTokenValid(): bool
+    {
+        return ! $this->isChallengeTokenExpired();
     }
 }

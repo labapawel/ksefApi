@@ -134,7 +134,7 @@ class DataFactory
         return self::createInvoice(array_merge([
             'is_signed' => true,
             'processed_at' => now(),
-            'submitted_at' => now()->subMinutes(5,
+            'submitted_at' => now()->subMinutes(5),
             'processed_at' => now(),
         ], $overrides));
     }
@@ -171,11 +171,6 @@ class DataFactory
         ], $overrides));
     }
 
-    /**
-     * Utwórz poświadczenie z wygasającym tokenem (za 1 godzinę).
-     *
-     * @param array<string, mixed> $overrides
-     
 
     /**
      * Utwórz wygaśnięty challenge token.

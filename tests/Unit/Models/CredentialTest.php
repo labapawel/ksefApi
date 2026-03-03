@@ -73,6 +73,27 @@ class CredentialTest extends TestCase
     }
 
     /**
+     * Test: Pole api_url może być ustawione i pobrane.
+     */
+    public function test_api_url_can_be_set_and_retrieved(): void
+    {
+        $apiUrl = 'https://ksef-demo.mf.gov.pl/api';
+
+        $credential = Credential::create([
+            'environment' => 'demo',
+            'nip' => '1234567890',
+            'api_url' => $apiUrl,
+        ]);
+
+        $this->assertEquals($apiUrl, $credential->api_url);
+        $this->assertDatabaseHas('ksef_credentials', [
+            'environment' => 'demo',
+            'nip' => '1234567890',
+            'api_url' => $apiUrl,
+        ]);
+    }
+
+    /**
      * Test: Scope "environment".
      */
     public function test_scope_environment(): void
@@ -387,5 +408,116 @@ class CredentialTest extends TestCase
         $credential = $credential->fresh();
 
         $this->assertTrue($credential->challenge_token_expires_at->isPast());
+    }
+
+    /**
+     * Test: Metoda isChallengeTokenExpired() zwraca true dla wygasłego tokena.
+     */
+    public function test_is_challenge_token_expired_returns_true_for_expired_token(): void
+    {
+        $credential = Credential::create([
+            'environment' => 'demo',
+            'nip' => '1234567890',
+            'challenge_token_expires_at' => now()->subMinutes(5),
+        ]);
+
+        $this->assertTrue($credential->isChallengeTokenExpired());
+    }
+
+    /**
+     * Test: Metoda isChallengeTokenExpired() zwraca false dla ważnego tokena.
+     */
+    public function test_is_challenge_token_expired_returns_false_for_valid_token(): void
+    {
+        $credential = Credential::create([
+            'environment' => 'demo',
+            'nip' => '1234567890',
+            'challenge_token_expires_at' => now()->addMinutes(10),
+        ]);
+
+        $this->assertFalse($credential->isChallengeTokenExpired());
+    }
+
+    /**
+     * Test: Metoda isChallengeTokenValid() zwraca true dla ważnego tokena.
+     */
+    public function test_is_challenge_token_valid_returns_true_for_valid_token(): void
+    {
+        $credential = Credential::create([
+            'environment' => 'demo',
+            'nip' => '1234567890',
+            'challenge_token_expires_at' => now()->addMinutes(10),
+        ]);
+
+        $this->assertTrue($credential->isChallengeTokenValid());
+    }
+
+    /**
+     * Test: Scope apiUrl() filtruje po api_url.
+     */
+    public function test_scope_api_url_filters_by_api_url(): void
+    {
+        Credential::create([
+            'environment' => 'demo',
+            'nip' => '1111111111',
+            'api_url' => 'https://ksef-demo.mf.gov.pl/api',
+        ]);
+
+        Credential::create([
+            'environment' => 'test',
+            'nip' => '2222222222',
+            'api_url' => 'https://ksef-test.mf.gov.pl/api',
+        ]);
+
+        $credentials = Credential::apiUrl('https://ksef-demo.mf.gov.pl/api')->get();
+
+        $this->assertCount(1, $credentials);
+        $this->assertEquals('https://ksef-demo.mf.gov.pl/api', $credentials->first()->api_url);
+    }
+
+    /**
+     * Test: Scope validToken() filtruje poświadczenia z ważnym access tokenem.
+     */
+    public function test_scope_valid_token_filters_valid_tokens(): void
+    {
+        Credential::create([
+            'environment' => 'demo',
+            'nip' => '1111111111',
+            'token_expires_at' => now()->addHours(1), // ważny
+        ]);
+
+        Credential::create([
+            'environment' => 'demo',
+            'nip' => '2222222222',
+            'token_expires_at' => now()->subHours(1), // wygasły
+        ]);
+
+        $credentials = Credential::validToken()->get();
+
+        $this->assertCount(1, $credentials);
+        $this->assertEquals('1111111111', $credentials->first()->nip);
+    }
+
+    /**
+     * Test: Scope validChallengeToken() filtruje poświadczenia z ważnym challenge tokenem.
+     */
+    public function test_scope_valid_challenge_token_filters_valid_tokens(): void
+    {
+        Credential::create([
+            'environment' => 'demo',
+            'nip' => '1111111111',
+            'challenge_token_expires_at' => now()->addMinutes(10), // ważny
+        ]);
+
+        Credential::create([
+            'environment' => 'demo',
+            'nip' => '2222222222',
+            'challenge_token_expires_at' => now()->subMinutes(5), // wygasły
+        ]);
+
+        $credentials = Credential::validChallengeToken()->get();
+
+        $this->assertCount(1, $credentials);
+        $this->assertEquals('1111111111', $credentials->first()->nip);
     }
 }

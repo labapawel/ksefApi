@@ -61,6 +61,8 @@ KSEF_INVOICES_TABLE=ksef_invoices
 | `KSEF_ENV` | ✅ | Środowisko KSeF: `test`, `demo`, lub `prod`. Wpływa na wybór API URL i certyfikatów. |
 | `KSEF_URL` | ✅ | URL API KSeF dla wybranego środowiska. Domyślnie: `https://api-demo.ksef.mf.gov.pl/v2` (demo) |
 | `KSEF_INVOICE_ENCRYPTION_KEY` | ✅ | Klucz szyfrujący do AES-256-CBC dla faktur. Powinien być silny, losowo wygenerowany (min. 32 znaki). **Nigdy nie commituj tego do Gita!** |
+| `KSEF_CHALLENGE_TOKEN_LIFETIME` | ❌ | Czas ważności challenge tokena w minutach. Domyślnie: `10` |
+| `KSEF_API_TIMEOUT` | ❌ | Timeout dla żądań HTTP do API KSeF w sekundach. Domyślnie: `30` |
 | `KSEF_CREDENTIALS_TABLE` | ❌ | Nazwa tabeli dla poświadczeń. Domyślnie: `ksef_credentials` |
 | `KSEF_INVOICES_TABLE` | ❌ | Nazwa tabeli dla faktur. Domyślnie: `ksef_invoices` |
 
@@ -181,7 +183,7 @@ $challengeToken = $credential->ksef_token_encrypted;
 $accessToken = $credential->access_token_encrypted;
 $refreshToken = $credential->refresh_token_encrypted;
 
-// Sprawdź ważność
+// Sprawdź ważność access tokena
 if ($credential->isTokenValid()) {
     // Access token nie wygasł
 }
@@ -190,8 +192,19 @@ if ($credential->isTokenExpired()) {
     // Access token wygasł, wymagane odświeżenie
 }
 
-// Meta zawiera czas otrzymania challenge tokena
-$receivedAt = $credential->meta['challenge_token_received_at'] ?? null;
+// Sprawdź ważność challenge tokena
+if ($credential->isChallengeTokenValid()) {
+    // Challenge token jest jeszcze ważny
+}
+
+if ($credential->isChallengeTokenExpired()) {
+    // Challenge token wygasł, wymagany nowy
+}
+
+// Lifecycle timestamps
+$challengeReceivedAt = $credential->challenge_token_received_at;
+$challengeExpiresAt = $credential->challenge_token_expires_at;
+$accessExpiresAt = $credential->token_expires_at;
 ```
 
 ## Model danych
@@ -200,9 +213,12 @@ $receivedAt = $credential->meta['challenge_token_received_at'] ?? null;
 
 Tabela przechowuje zaszyfrowane dane wrażliwe KSeF dla pary `environment + nip`:
 
-- zaszyfrowane: token KSeF, access token, refresh token
+- identyfikatory: `environment`, `nip`, `api_url` (URL endpointa API)
+- zaszyfrowane: token KSeF (challenge), access token, refresh token
 - zaszyfrowane: certyfikat, klucz prywatny, hasło do certyfikatu
-- metadane: data wygaśnięcia tokena, dodatkowe `meta` (json)
+- lifecycle: `challenge_token_received_at`, `challenge_token_expires_at`, `token_expires_at`
+- uprawnienia: `scopes`, `permissions` (json)
+- metadane: dodatkowe `meta` (json)
 
 ### `ksef_invoices`
 
@@ -229,15 +245,27 @@ $credential = Credential::forEnvironmentAndNip('demo', '1234567890')->first();
 // Dostępne scopes
 Credential::environment('demo')->get();
 Credential::nip('1234567890')->get();
+Credential::apiUrl('https://ksef-demo.mf.gov.pl/api')->get();
 Credential::forEnvironmentAndNip('demo', '1234567890')->first();
+Credential::validToken()->get();              // tylko z ważnym access tokenem
+Credential::validChallengeToken()->get();     // tylko z ważnym challenge tokenem
 
-// Sprawdzenie ważności tokena
+// Sprawdzenie ważności access tokena
 if ($credential->isTokenValid()) {
-    // token jest jeszcze ważny
+    // access token jest jeszcze ważny
 }
 
 if ($credential->isTokenExpired()) {
-    // token wygasł, wymagane odświeżenie
+    // access token wygasł, wymagane odświeżenie
+}
+
+// Sprawdzenie ważności challenge tokena
+if ($credential->isChallengeTokenValid()) {
+    // challenge token jest jeszcze ważny
+}
+
+if ($credential->isChallengeTokenExpired()) {
+    // challenge token wygasł, wymagany nowy
 }
 ```
 
