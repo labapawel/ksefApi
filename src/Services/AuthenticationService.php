@@ -37,41 +37,101 @@ class AuthenticationService
     /**
      * Zaloguj się do KSeF dla danego NIP.
      *
+     * Pobiera certyfikat z bazy danych i loguje się do API KSeF.
+     *
      * Automatycznie:
+     * - Pobiera dane z bazy (certyfikat, klucz prywatny, hasło)
      * - Pobiera challenge token
      * - Wymienia na access/refresh tokeny
-     * - Zapisuje w bazie danych
-     * - Odświeża jeśli poprzedni challenge token wygasł
+     * - Uaktualnia dane w bazie
      *
-     * @param string $certificatePath Ścieżka do pliku certyfikatu PKCS#12 lub PEM
-     * @param string $privateKeyPath Ścieżka do klucza prywatnego
-     * @param string $certificatePassword Hasło do certyfikatu
      * @param string $nip NIP podatnika
+     * @param string|null $environment Środowisko (domyślnie z konfiguracji)
      * @return AuthenticationResponse
      * @throws KsefAuthenticationException
      */
     public function login(
-        string $certificatePath,
-        string $privateKeyPath,
-        string $certificatePassword,
         string $nip,
+        ?string $environment = null,
     ): AuthenticationResponse {
+        $tempFiles = [];
+
         try {
+            $env = $environment ?? $this->environment;
+
+            // Pobierz rekord poświadczeń z bazy (certyfikat jest już tam zapisany)
+            $dbCredential = Credential::forEnvironmentAndNip($env, $nip)
+                ->withCertificate()
+                ->orderByDesc('updated_at')
+                ->first();
+
+            if (! $dbCredential) {
+                throw new KsefAuthenticationException(
+                    "Brak poświadczeń w bazie dla NIP {$nip} w środowisku {$env}. Najpierw zapisz certyfikat do bazy.",
+                );
+            }
+
+            // Przygotuj tymczasowe pliki z zawartością z bazy (Laravel aut. deszyfuje)
+            $certificatePath = $this->createTempFile($dbCredential->certificate_encrypted ?? '', '.pem');
+            $privateKeyPath = $this->createTempFile($dbCredential->private_key_encrypted ?? '', '.key');
+
+            if (! $certificatePath || ! $privateKeyPath) {
+                throw new KsefAuthenticationException(
+                    "Nie udało się stworzyć tymczasowych plików dla certyfikatu",
+                );
+            }
+
+            $tempFiles[] = $certificatePath;
+            $tempFiles[] = $privateKeyPath;
+
+            // Utwórz DTO z danymi z bazy
             $credentials = new Credentials(
                 nip: $nip,
                 ksefToken: '', // Będzie ustawiony przez API
                 certificatePath: $certificatePath,
                 privateKeyPath: $privateKeyPath,
-                certificatePassword: $certificatePassword,
+                certificatePassword: $dbCredential->certificate_password_encrypted ?? '',
             );
 
-            return $this->authClient->authenticate($credentials, $nip);
+            return $this->authClient->authenticate($credentials, $nip, $env);
         } catch (\Exception $e) {
             throw new KsefAuthenticationException(
                 "Logowanie dla NIP {$nip} się nie powiodło: {$e->getMessage()}",
                 previous: $e,
             );
+        } finally {
+            // Wyczyść tymczasowe pliki
+            foreach ($tempFiles as $file) {
+                if (file_exists($file)) {
+                    unlink($file);
+                }
+            }
         }
+    }
+
+    /**
+     * Stwórz tymczasowy plik z zawartością.
+     *
+     * @param string $content
+     * @param string $suffix Rozszerzenie (np. '.pem')
+     * @return string|null Ścieżka do pliku lub null jeśli operacja się nie powiodła
+     */
+    private function createTempFile(string $content, string $suffix = ''): ?string
+    {
+        if (empty($content)) {
+            return null;
+        }
+
+        $tempDir = sys_get_temp_dir();
+        $tempFile = tempnam($tempDir, 'ksef_') . $suffix;
+
+        if (file_put_contents($tempFile, $content) === false) {
+            return null;
+        }
+
+        chmod($tempFile, 0600); // Zabezpiecz plik
+
+        return $tempFile;
     }
 
     /**

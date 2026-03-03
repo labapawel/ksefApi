@@ -169,12 +169,10 @@ use Labapawel\KsefApi\Services\AuthenticationService;
 
 $auth = new AuthenticationService();
 
-// Zaloguj się
+// Zaloguj się (pobiera certyfikat z bazy)
 $response = $auth->login(
-    certificatePath: '/path/to/cert.pem',
-    privateKeyPath: '/path/to/key.pem',
-    certificatePassword: 'hasło123',
     nip: '1234567890',
+    environment: 'demo' // opcjonalnie, domyślnie z konfigu
 );
 
 // Sprawdź czy poświadczenia są ważne
@@ -203,7 +201,7 @@ $credentials = new Credentials(
     certificatePassword: 'hasło123',
 );
 
-$authResponse = $client->authenticate($credentials, '1234567890');
+$authResponse = $client->authenticate($credentials, '1234567890', 'demo');
 
 // $authResponse zawiera:
 // - challengeToken (tymczasowy)

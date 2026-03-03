@@ -58,14 +58,16 @@ class KsefAuthClient
      *
      * @param Credentials $credentials Dane do logowania (NIP, certyfikat, itd.)
      * @param string $nip NIP podatnika
+     * @param string|null $environment Środowisko (domyślnie z configu)
      * @return AuthenticationResponse
      * @throws KsefAuthenticationException
      * @throws KsefApiException
      */
-    public function authenticate(Credentials $credentials, string $nip): AuthenticationResponse
+    public function authenticate(Credentials $credentials, string $nip, ?string $environment = null): AuthenticationResponse
     {
+        $env = $environment ?? $this->environment;
         // Weź pierwszy aktualny rekord poświadczeń dla NIP+środowisko
-        $existingCredential = Credential::forEnvironmentAndNip($this->environment, $nip)
+        $existingCredential = Credential::forEnvironmentAndNip($env, $nip)
             ->withCertificate()
             ->orderByDesc('updated_at')
             ->first();
@@ -89,7 +91,7 @@ class KsefAuthClient
         $authResponse = $this->authorizeSession($credentials, $challengeToken);
 
         // Zapisz w bazie
-        $this->saveCredentialsToDatabase($credentials, $authResponse);
+        $this->saveCredentialsToDatabase($credentials, $authResponse, $env);
 
         return $authResponse;
     }
@@ -239,9 +241,9 @@ class KsefAuthClient
      * @param AuthenticationResponse $authResponse
      * @return Credential
      */
-    private function saveCredentialsToDatabase(Credentials $credentials, AuthenticationResponse $authResponse): Credential
+    private function saveCredentialsToDatabase(Credentials $credentials, AuthenticationResponse $authResponse, string $environment): Credential
     {
-        $credential = Credential::forEnvironmentAndNip($this->environment, $credentials->nip)
+        $credential = Credential::forEnvironmentAndNip($environment, $credentials->nip)
             ->orderByDesc('updated_at')
             ->first();
 
@@ -272,7 +274,7 @@ class KsefAuthClient
 
         // Utwórz nowe poświadczenia
         return Credential::create([
-            'environment' => $this->environment,
+            'environment' => $environment,
             'nip' => $credentials->nip,
             'api_url' => $this->apiUrl,
             'ksef_token_encrypted' => $authResponse->challengeToken,
@@ -351,6 +353,4 @@ class KsefAuthClient
     public function refreshToken(string $nip, string $refreshToken): AuthenticationResponse
     {
         // TODO: Implementacja
-        throw new KsefApiException('Метода refreshToken nie jest jeszcze zaimplementowana');
-    }
-}
+        throw new KsefApiException('Метода refreshToken nie jest jeszcze zaimplementowana
