@@ -1,0 +1,42 @@
+{
+	"name": "labapawel/ksef-api",
+	"description": "Laravel component for KSeF API authentication, invoice sending and invoice retrieval.",
+	"type": "library",
+	"license": "MIT",
+	"require": {
+		"php": "^8.2",
+		"ext-curl": "*",
+		"ext-json": "*",
+		"ext-openssl": "*",
+		"illuminate/support": "^10.0|^11.0|^12.0"
+	},
+	"require-dev": {
+		"phpunit/phpunit": "^10.0"
+	},
+	"autoload": {
+		"psr-4": {
+			"Labap\\KsefApi\\": "src/"
+		}
+	},
+	"autoload-dev": {
+		"psr-4": {
+			"Labap\\KsefApi\\Tests\\": "tests/"
+		}
+	},
+	"extra": {
+		"laravel": {
+			"providers": [
+				"Labap\\KsefApi\\KsefServiceProvider"
+			]
+		}
+	},
+	"minimum-stability": "stable",
+	"prefer-stable": true,
+	"keywords": [
+		"ksef",
+		"laravel",
+		"invoices",
+		"poland",
+		"api"
+	]
+}
