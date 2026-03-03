@@ -132,8 +132,8 @@ class DataFactory
     public static function createAcceptedInvoice(array $overrides = []): Invoice
     {
         return self::createInvoice(array_merge([
+            'status' => 'accepted',
             'is_signed' => true,
-            'processed_at' => now(),
             'submitted_at' => now()->subMinutes(5),
             'processed_at' => now(),
         ], $overrides));
@@ -147,14 +147,14 @@ class DataFactory
      */
     public static function createRejectedInvoice(array $overrides = []): Invoice
     {
+        return self::createInvoice(array_merge([
+            'status' => 'rejected',
             'submitted_at' => now()->subMinutes(5),
+            'processed_at' => now(),
             'error_details' => [
                 'error_code' => 'INVALID_SIGNATURE',
                 'error_message' => 'Podpis XAdES jest nieprawidłowy',
             ],
-        return self::createInvoice(array_merge([
-            'status' => 'rejected',
-            'processed_at' => now(),
         ], $overrides));
     }
 
@@ -198,7 +198,13 @@ class DataFactory
             'is_signed' => true,
             'signature_encrypted' => '<?xml version="1.0"?><xades>signature</xades>',
         ], $overrides));
-    }* @return Credential
+    }
+
+    /**
+     * Utwórz poświadczenie które wkrótce wygaśnie.
+     *
+     * @param array<string, mixed> $overrides
+     * @return Credential
      */
     public static function createSoonToExpireCredential(array $overrides = []): Credential
     {
