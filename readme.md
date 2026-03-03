@@ -54,6 +54,45 @@ KSEF_CREDENTIALS_TABLE=ksef_credentials
 KSEF_INVOICES_TABLE=ksef_invoices
 ```
 
+### Opis parametrów
+
+| Parametr | Wymagany | Opis |
+|----------|----------|------|
+| `KSEF_ENV` | ✅ | Środowisko KSeF: `test`, `demo`, lub `prod`. Wpływa na wybór API URL i certyfikatów. |
+| `KSEF_URL` | ✅ | URL API KSeF dla wybranego środowiska. Domyślnie: `https://api-demo.ksef.mf.gov.pl/v2` (demo) |
+| `KSEF_INVOICE_ENCRYPTION_KEY` | ✅ | Klucz szyfrujący do AES-256-CBC dla faktur. Powinien być silny, losowo wygenerowany (min. 32 znaki). **Nigdy nie commituj tego do Gita!** |
+| `KSEF_CREDENTIALS_TABLE` | ❌ | Nazwa tabeli dla poświadczeń. Domyślnie: `ksef_credentials` |
+| `KSEF_INVOICES_TABLE` | ❌ | Nazwa tabeli dla faktur. Domyślnie: `ksef_invoices` |
+
+### Generowanie klucza szyfrującego
+
+```bash
+# Wygeneruj losowy klucz 32-bajtowy zakodowany base64
+php -r "echo 'KSEF_INVOICE_ENCRYPTION_KEY=' . base64_encode(openssl_random_pseudo_bytes(32)) . PHP_EOL;"
+```
+
+### Wartości dla poszczególnych środowisk
+
+**Środowisko TEST:**
+```dotenv
+KSEF_ENV=test
+KSEF_URL=https://api-test.ksef.mf.gov.pl/v2
+```
+
+**Środowisko DEMO:**
+```dotenv
+KSEF_ENV=demo
+KSEF_URL=https://api-demo.ksef.mf.gov.pl/v2
+```
+
+**Środowisko PRODUCTION:**
+```dotenv
+KSEF_ENV=prod
+KSEF_URL=https://api.ksef.mf.gov.pl/v2
+```
+
+⚠️ **Ważne**: Każde środowisko ma zupełnie inne certyfikaty, tokeny i dane poświadczeń. Nigdy nie mieszaj środowisk!
+
 ## Model danych
 
 ### `ksef_credentials`
@@ -267,6 +306,66 @@ Po sklonowaniu uruchom:
 ```bash
 composer install
 composer dump-autoload
+```
+
+## Testowanie
+
+Paczka zawiera kompleksowy zestaw testów dla modeli Eloquent.
+
+### Instalacja zależności testowych
+
+```bash
+composer install --dev
+```
+
+### Uruchamianie testów
+
+```bash
+# Wszystkie testy
+./vendor/bin/phpunit
+
+# Tylko testy modeli
+./vendor/bin/phpunit tests/Unit/Models
+
+# Tylko testy Credential
+./vendor/bin/phpunit tests/Unit/Models/CredentialTest.php
+
+# Tylko testy Invoice
+./vendor/bin/phpunit tests/Unit/Models/InvoiceTest.php
+
+# Z pokryciem kodu
+./vendor/bin/phpunit --coverage-html coverage
+```
+
+### Struktura testów
+
+- `tests/TestCase.php` — Bazowa klasa testowa z konfiguracją środowiska testowego
+- `tests/Unit/Models/CredentialTest.php` — 17 testów dla modelu Credential
+- `tests/Unit/Models/InvoiceTest.php` — 25 testów dla modelu Invoice
+- `tests/Unit/Models/PackageInstallationTest.php` — Testy instalacji paczki
+- `tests/Fixtures/DataFactory.php` — Fabryka testowych danych ułatwiająca tworzenie instancji testowych
+
+### Używanie DataFactory w testach
+
+Fabryka `DataFactory` zawiera pomocne metody do tworzenia testowych instancji:
+
+```php
+use Labapawel\KsefApi\Tests\Fixtures\DataFactory;
+
+// Utwórz jedno poświadczenie
+$credential = DataFactory::createCredential();
+
+// Utwórz kilka poświadczeń dla środowiska demo
+$credentials = DataFactory::createCredentials(5, 'demo');
+
+// Utwórz jedną fakturę
+$invoice = DataFactory::createInvoice();
+
+// Utwórz zaakceptowaną fakturę
+$invoice = DataFactory::createAcceptedInvoice();
+
+// Utwórz wygaśnięte poświadczenie
+$credential = DataFactory::createExpiredCredential();
 ```
 
 ## Licencja
