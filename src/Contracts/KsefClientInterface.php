@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace Labap\KsefApi\Contracts;
+namespace Labapawel\KsefApi\Contracts;
 
 interface KsefClientInterface
 {

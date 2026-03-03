@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace Labap\KsefApi\Support;
+namespace Labapawel\KsefApi\Support;
 
 class EncryptionService
 {

@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace Labap\KsefApi;
+namespace Labapawel\KsefApi;
 
 use Illuminate\Support\ServiceProvider;
 

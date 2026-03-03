@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace Labap\KsefApi\Repositories;
+namespace Labapawel\KsefApi\Repositories;
 
 class CredentialRepository
 {

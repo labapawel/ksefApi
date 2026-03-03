@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace Labap\KsefApi\DTO;
+namespace Labapawel\KsefApi\DTO;
 
 final class Credentials
 {

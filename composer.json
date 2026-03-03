@@ -22,18 +22,18 @@
 	},
 	"autoload": {
 		"psr-4": {
-			"Labap\\KsefApi\\": "src/"
+			"Labapawel\\KsefApi\\": "src/"
 		}
 	},
 	"autoload-dev": {
 		"psr-4": {
-			"Labap\\KsefApi\\Tests\\": "tests/"
+			"Labapawel\\KsefApi\\Tests\\": "tests/"
 		}
 	},
 	"extra": {
 		"laravel": {
 			"providers": [
-				"Labap\\KsefApi\\KsefServiceProvider"
+				"Labapawel\\KsefApi\\KsefServiceProvider"
 			]
 		}
 	},
