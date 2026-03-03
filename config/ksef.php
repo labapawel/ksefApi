@@ -7,4 +7,10 @@ return [
 
     'credentials_table' => env('KSEF_CREDENTIALS_TABLE', 'ksef_credentials'),
     'invoices_table' => env('KSEF_INVOICES_TABLE', 'ksef_invoices'),
+
+    // Czas ważności challenge tokena (w minutach) — po tym czasie wymagane ponowne logowanie
+    'challenge_token_lifetime' => (int) env('KSEF_CHALLENGE_TOKEN_LIFETIME', 10),
+
+    // Timeout dla żądań do API (w sekundach)
+    'api_timeout' => (int) env('KSEF_API_TIMEOUT', 30),
 ];

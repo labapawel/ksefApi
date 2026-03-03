@@ -603,4 +603,189 @@ class InvoiceTest extends TestCase
 
         $this->assertEquals('pending', $invoice->status);
     }
+
+    /**
+     * Test: Pole environment jest przechowywane.
+     */
+    public function test_environment_field_is_stored(): void
+    {
+        $invoice = Invoice::create([
+            'direction' => 'sale',
+            'invoice_number' => 'INV032',
+            'invoice_date' => '2026-03-03',
+            'environment' => 'demo',
+            'xml_encrypted' => '<invoice></invoice>',
+        ]);
+
+        $this->assertEquals('demo', $invoice->environment);
+    }
+
+    /**
+     * Test: Pole session_id jest przechowywane i indeksowane.
+     */
+    public function test_session_id_field_is_stored(): void
+    {
+        $sessionId = 'SESSION-2026-03-03-001';
+
+        $invoice = Invoice::create([
+            'direction' => 'sale',
+            'invoice_number' => 'INV033',
+            'invoice_date' => '2026-03-03',
+            'session_id' => $sessionId,
+            'xml_encrypted' => '<invoice></invoice>',
+        ]);
+
+        $found = Invoice::where('session_id', $sessionId)->first();
+        $this->assertNotNull($found);
+    }
+
+    /**
+     * Test: Pole is_signed jest konwertowane do boolean.
+     */
+    public function test_is_signed_is_cast_to_boolean(): void
+    {
+        $invoice = Invoice::create([
+            'direction' => 'sale',
+            'invoice_number' => 'INV034',
+            'invoice_date' => '2026-03-03',
+            'is_signed' => true,
+            'xml_encrypted' => '<invoice></invoice>',
+        ]);
+
+        $invoice = $invoice->fresh();
+
+        $this->assertIsBool($invoice->is_signed);
+        $this->assertTrue($invoice->is_signed);
+    }
+
+    /**
+     * Test: Szyfrowanie pola signature_encrypted.
+     */
+    public function test_signature_encrypted_is_encrypted(): void
+    {
+        $plainSignature = '<?xml version="1.0"?><xades>signature</xades>';
+
+        $invoice = Invoice::create([
+            'direction' => 'sale',
+            'invoice_number' => 'INV035',
+            'invoice_date' => '2026-03-03',
+            'signature_encrypted' => $plainSignature,
+            'xml_encrypted' => '<invoice></invoice>',
+        ]);
+
+        // Sprawdź że w bazie jest zaszyfrowany
+        $encrypted = \DB::table('ksef_invoices')
+            ->where('id', $invoice->id)
+            ->first()
+            ->signature_encrypted;
+
+        $this->assertNotEquals($plainSignature, $encrypted);
+
+        // Sprawdź że model zwraca zdeszyfowany podpis
+        $invoice = $invoice->fresh();
+        $this->assertEquals($plainSignature, $invoice->signature_encrypted);
+    }
+
+    /**
+     * Test: Pole error_details jest konwertowane do JSON.
+     */
+    public function test_error_details_is_cast_to_json(): void
+    {
+        $errorDetails = [
+            'error_code' => 'INVALID_SIGNATURE',
+            'error_message' => 'Podpis XAdES jest nieprawidłowy',
+            'details' => ['field' => 'signature', 'reason' => 'nie zatwierdzony'],
+        ];
+
+        $invoice = Invoice::create([
+            'direction' => 'sale',
+            'invoice_number' => 'INV036',
+            'invoice_date' => '2026-03-03',
+            'error_details' => $errorDetails,
+            'status' => 'rejected',
+            'xml_encrypted' => '<invoice></invoice>',
+        ]);
+
+        $invoice = $invoice->fresh();
+
+        $this->assertIsArray($invoice->error_details);
+        $this->assertEquals($errorDetails, $invoice->error_details);
+    }
+
+    /**
+     * Test: Pola submitted_at i processed_at są konwertowane do datetime.
+     */
+    public function test_submitted_at_and_processed_at_are_datetime(): void
+    {
+        $submittedAt = now();
+        $processedAt = now()->addMinutes(5);
+
+        $invoice = Invoice::create([
+            'direction' => 'sale',
+            'invoice_number' => 'INV037',
+            'invoice_date' => '2026-03-03',
+            'submitted_at' => $submittedAt,
+            'processed_at' => $processedAt,
+            'xml_encrypted' => '<invoice></invoice>',
+        ]);
+
+        $invoice = $invoice->fresh();
+
+        $this->assertInstanceOf(\Illuminate\Support\Carbon::class, $invoice->submitted_at);
+        $this->assertInstanceOf(\Illuminate\Support\Carbon::class, $invoice->processed_at);
+    }
+
+    /**
+     * Test: Filtrowanie faktur po environment.
+     */
+    public function test_filter_invoices_by_environment(): void
+    {
+        Invoice::create([
+            'direction' => 'sale',
+            'invoice_number' => 'INV038',
+            'invoice_date' => '2026-03-03',
+            'environment' => 'demo',
+            'xml_encrypted' => '<invoice></invoice>',
+        ]);
+
+        Invoice::create([
+            'direction' => 'sale',
+            'invoice_number' => 'INV039',
+            'invoice_date' => '2026-03-03',
+            'environment' => 'test',
+            'xml_encrypted' => '<invoice></invoice>',
+        ]);
+
+        $demoInvoices = Invoice::where('environment', 'demo')->get();
+
+        $this->assertCount(1, $demoInvoices);
+        $this->assertEquals('demo', $demoInvoices->first()->environment);
+    }
+
+    /**
+     * Test: Filtrowanie faktur po is_signed.
+     */
+    public function test_filter_invoices_by_is_signed(): void
+    {
+        Invoice::create([
+            'direction' => 'sale',
+            'invoice_number' => 'INV040',
+            'invoice_date' => '2026-03-03',
+            'is_signed' => true,
+            'xml_encrypted' => '<invoice></invoice>',
+        ]);
+
+        Invoice::create([
+            'direction' => 'sale',
+            'invoice_number' => 'INV041',
+            'invoice_date' => '2026-03-03',
+            'is_signed' => false,
+            'xml_encrypted' => '<invoice></invoice>',
+        ]);
+
+        $signedInvoices = Invoice::where('is_signed', true)->get();
+
+        $this->assertCount(1, $signedInvoices);
+        $this->assertTrue($signedInvoices->first()->is_signed);
+    }
 }

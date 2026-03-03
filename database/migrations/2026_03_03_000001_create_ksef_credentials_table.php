@@ -15,6 +15,7 @@ return new class extends Migration {
             // Identyfikatory: środowisko (test/demo/prod) + NIP podatnika
             $table->string('environment', 20)->index();
             $table->string('nip', 20)->index();
+            $table->string('api_url')->nullable(); // URL endpointa API KSeF
 
             // === ZASZYFROWANE DANE WRAŻLIWE ===
             // Wszystkie poświadczenia muszą być przechowywane zaszyfrowane za pomocą klucza Laravel
@@ -25,11 +26,17 @@ return new class extends Migration {
             $table->longText('private_key_encrypted')->nullable(); // Klucz prywatny RSA
             $table->longText('certificate_password_encrypted')->nullable(); // Hasło do certyfikatu
 
-            // Cykl życia tokena
+            // Cykl życia tokenów
+            $table->timestamp('challenge_token_received_at')->nullable(); // Kiedy otrzymaliśmy challenge token z API
+            $table->timestamp('challenge_token_expires_at')->nullable(); // Kiedy challenge token wygasa
             $table->timestamp('token_expires_at')->nullable(); // Data wygaśnięcia access_token
             
+            // Informacje o zakreśach i uprawnieniach
+            $table->json('scopes')->nullable(); // Lista zakreśów (InvoiceWrite, InvoiceRead, itp.)
+            $table->json('permissions')->nullable(); // Przydział uprawnień
+            
             // Dodatkowe metadane
-            $table->json('meta')->nullable(); // Dodatkowe informacje (wystawca, temat, zakresy itp.)
+            $table->json('meta')->nullable(); // Dodatkowe informacje (wystawca, temat, itp.)
             $table->timestamps(); // created_at, updated_at
 
             // Unikalny warunek: jeden rekord poświadczeń na parę środowisko+nip

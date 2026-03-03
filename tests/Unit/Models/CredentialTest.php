@@ -310,4 +310,82 @@ class CredentialTest extends TestCase
         $this->assertCount(3, $credentials);
         $this->assertEquals(['test', 'demo', 'prod'], $credentials->pluck('environment')->sort()->values()->toArray());
     }
+
+    /**
+     * Test: Challenge token received_at i expires_at są konwertowane do datetime.
+     */
+    public function test_challenge_token_timestamps_are_cast_to_datetime(): void
+    {
+        $receivedAt = now();
+        $expiresAt = now()->addMinutes(10);
+
+        $credential = Credential::create([
+            'environment' => 'demo',
+            'nip' => '1234567890',
+            'challenge_token_received_at' => $receivedAt,
+            'challenge_token_expires_at' => $expiresAt,
+        ]);
+
+        $credential = $credential->fresh();
+
+        $this->assertInstanceOf(\Illuminate\Support\Carbon::class, $credential->challenge_token_received_at);
+        $this->assertInstanceOf(\Illuminate\Support\Carbon::class, $credential->challenge_token_expires_at);
+    }
+
+    /**
+     * Test: Scopes i permissions są konwertowane do JSON.
+     */
+    public function test_scopes_and_permissions_are_cast_to_json(): void
+    {
+        $scopes = ['InvoiceWrite', 'InvoiceRead', 'InvoiceManage'];
+        $permissions = ['send_invoice', 'get_invoice', 'get_invoice_details'];
+
+        $credential = Credential::create([
+            'environment' => 'demo',
+            'nip' => '1234567890',
+            'scopes' => $scopes,
+            'permissions' => $permissions,
+        ]);
+
+        $credential = $credential->fresh();
+
+        $this->assertIsArray($credential->scopes);
+        $this->assertIsArray($credential->permissions);
+        $this->assertEquals($scopes, $credential->scopes);
+        $this->assertEquals($permissions, $credential->permissions);
+    }
+
+    /**
+     * Test: Sprawdzenie czy challenge token nie wygasł.
+     */
+    public function test_challenge_token_not_expired(): void
+    {
+        $credential = Credential::create([
+            'environment' => 'demo',
+            'nip' => '1234567890',
+            'challenge_token_received_at' => now(),
+            'challenge_token_expires_at' => now()->addMinutes(10),
+        ]);
+
+        $credential = $credential->fresh();
+
+        $this->assertTrue($credential->challenge_token_expires_at->isFuture());
+    }
+
+    /**
+     * Test: Sprawdzenie czy challenge token wygasł.
+     */
+    public function test_challenge_token_expired(): void
+    {
+        $credential = Credential::create([
+            'environment' => 'demo',
+            'nip' => '1234567890',
+            'challenge_token_received_at' => now()->subMinutes(15),
+            'challenge_token_expires_at' => now()->subMinutes(5),
+        ]);
+
+        $credential = $credential->fresh();
+
+        $this->assertTrue($credential->challenge_token_expires_at->isPast());
+    }
 }

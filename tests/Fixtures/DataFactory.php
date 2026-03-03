@@ -26,12 +26,17 @@ class DataFactory
         $defaults = [
             'environment' => 'demo',
             'nip' => '1234567890',
+            'api_url' => 'https://ksef-demo.mf.gov.pl/api',
+            'ksef_token_encrypted' => 'challenge_token_' . uniqid(),
             'access_token_encrypted' => 'test_access_token_' . uniqid(),
             'refresh_token_encrypted' => 'test_refresh_token_' . uniqid(),
+            'challenge_token_received_at' => now(),
+            'challenge_token_expires_at' => now()->addMinutes(10),
             'token_expires_at' => now()->addHours(24),
+            'scopes' => ['InvoiceWrite', 'InvoiceRead'],
+            'permissions' => ['send_invoice', 'get_invoice'],
             'meta' => [
                 'issuer' => 'mf.gov.pl',
-                'scopes' => ['InvoiceWrite', 'InvoiceRead'],
             ],
         ];
 
@@ -77,8 +82,11 @@ class DataFactory
             'seller_name' => 'Moja Firma Sp. z o.o.',
             'buyer_nip' => '5471740555',
             'buyer_name' => 'Odbiorca Sp. z o.o.',
+            'environment' => 'demo',
             'xml_encrypted' => '<?xml version="1.0"?><invoice><amount>100.00</amount></invoice>',
             'status' => 'pending',
+            'is_signed' => false,
+            'submitted_at' => null,
             'meta' => [
                 'gross_amount' => 100.00,
                 'tax_amount' => 23.00,
@@ -104,6 +112,7 @@ class DataFactory
         for ($i = 0; $i < $count; $i++) {
             $invoices->push(
                 self::createInvoice([
+                    'environment' => 'demo',
                     'direction' => $direction,
                     'status' => $status,
                     'invoice_number' => 'TEST/' . date('Y/m/d') . '/' . ($i + 1),
@@ -123,7 +132,9 @@ class DataFactory
     public static function createAcceptedInvoice(array $overrides = []): Invoice
     {
         return self::createInvoice(array_merge([
-            'status' => 'accepted',
+            'is_signed' => true,
+            'processed_at' => now(),
+            'submitted_at' => now()->subMinutes(5,
             'processed_at' => now(),
         ], $overrides));
     }
@@ -136,6 +147,11 @@ class DataFactory
      */
     public static function createRejectedInvoice(array $overrides = []): Invoice
     {
+            'submitted_at' => now()->subMinutes(5),
+            'error_details' => [
+                'error_code' => 'INVALID_SIGNATURE',
+                'error_message' => 'Podpis XAdES jest nieprawidłowy',
+            ],
         return self::createInvoice(array_merge([
             'status' => 'rejected',
             'processed_at' => now(),
@@ -159,7 +175,35 @@ class DataFactory
      * Utwórz poświadczenie z wygasającym tokenem (za 1 godzinę).
      *
      * @param array<string, mixed> $overrides
+     
+
+    /**
+     * Utwórz wygaśnięty challenge token.
+     *
+     * @param array<string, mixed> $overrides
      * @return Credential
+     */
+    public static function createExpiredChallengeToken(array $overrides = []): Credential
+    {
+        return self::createCredential(array_merge([
+            'challenge_token_received_at' => now()->subMinutes(15),
+            'challenge_token_expires_at' => now()->subMinutes(5),
+        ], $overrides));
+    }
+
+    /**
+     * Utwórz podpisaną fakturę.
+     *
+     * @param array<string, mixed> $overrides
+     * @return Invoice
+     */
+    public static function createSignedInvoice(array $overrides = []): Invoice
+    {
+        return self::createInvoice(array_merge([
+            'is_signed' => true,
+            'signature_encrypted' => '<?xml version="1.0"?><xades>signature</xades>',
+        ], $overrides));
+    }* @return Credential
      */
     public static function createSoonToExpireCredential(array $overrides = []): Credential
     {

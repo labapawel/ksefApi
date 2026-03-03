@@ -24,13 +24,18 @@ class Credential extends Model
     protected $fillable = [
         'environment',
         'nip',
+        'api_url',
         'ksef_token_encrypted',
         'access_token_encrypted',
         'refresh_token_encrypted',
         'certificate_encrypted',
         'private_key_encrypted',
         'certificate_password_encrypted',
+        'challenge_token_received_at',
+        'challenge_token_expires_at',
         'token_expires_at',
+        'scopes',
+        'permissions',
         'meta',
     ];
 
@@ -40,7 +45,11 @@ class Credential extends Model
      * @var array<string, string>
      */
     protected $casts = [
+        'challenge_token_received_at' => 'datetime',
+        'challenge_token_expires_at' => 'datetime',
         'token_expires_at' => 'datetime',
+        'scopes' => 'json',
+        'permissions' => 'json',
         'meta' => 'json',
         'created_at' => 'datetime',
         'updated_at' => 'datetime',

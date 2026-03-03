@@ -29,13 +29,19 @@ class Invoice extends Model
         'seller_name',
         'buyer_nip',
         'buyer_name',
+        'environment',
         'ksef_number',
+        'session_id',
         'reference_number',
         'status',
+        'is_signed',
         'xml_encrypted',
         'xml_hash',
+        'signature_encrypted',
         'meta',
+        'error_details',
         'processed_at',
+        'submitted_at',
     ];
 
     /**
@@ -45,8 +51,11 @@ class Invoice extends Model
      */
     protected $casts = [
         'invoice_date' => 'date',
+        'is_signed' => 'boolean',
         'processed_at' => 'datetime',
+        'submitted_at' => 'datetime',
         'meta' => 'json',
+        'error_details' => 'json',
         'created_at' => 'datetime',
         'updated_at' => 'datetime',
     ];
@@ -58,6 +67,7 @@ class Invoice extends Model
      */
     protected $encrypted = [
         'xml_encrypted',
+        'signature_encrypted',
     ];
 
     // Stałe dla kierunków

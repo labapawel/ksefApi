@@ -93,6 +93,107 @@ KSEF_URL=https://api.ksef.mf.gov.pl/v2
 
 ⚠️ **Ważne**: Każde środowisko ma zupełnie inne certyfikaty, tokeny i dane poświadczeń. Nigdy nie mieszaj środowisk!
 
+## Autentykacja
+
+### Logowanie do KSeF
+
+Paczka automatycznie zarządza challenge tokenami i access tokenami.
+
+#### Używając AuthenticationService (rekomendowane)
+
+```php
+use Labapawel\KsefApi\Services\AuthenticationService;
+
+$auth = new AuthenticationService();
+
+// Zaloguj się
+$response = $auth->login(
+    certificatePath: '/path/to/cert.pem',
+    privateKeyPath: '/path/to/key.pem',
+    certificatePassword: 'hasło123',
+    nip: '1234567890',
+);
+
+// Sprawdź czy poświadczenia są ważne
+if ($auth->hasValidCredentials('1234567890')) {
+    $token = $auth->getAccessToken('1234567890');
+    // Użyj token do żądań API
+}
+
+// Wyloguj się (usuń poświadczenia)
+$auth->logout('1234567890');
+```
+
+#### Używając KsefAuthClient (niski poziom)
+
+```php
+use Labapawel\KsefApi\Clients\KsefAuthClient;
+use Labapawel\KsefApi\DTO\Credentials;
+
+$client = new KsefAuthClient();
+
+$credentials = new Credentials(
+    nip: '1234567890',
+    ksefToken: '',
+    certificatePath: '/path/to/cert.pem',
+    privateKeyPath: '/path/to/key.pem',
+    certificatePassword: 'hasło123',
+);
+
+$authResponse = $client->authenticate($credentials, '1234567890');
+
+// $authResponse zawiera:
+// - challengeToken (tymczasowy)
+// - accessToken (JWT)
+// - refreshToken (JWT)
+// - tokenExpiresAt (Carbon)
+// - challengeTokenReceivedAt (Carbon)
+```
+
+### Challenge Token Lifecycle
+
+Pakiet automatycznie zarządza **challenge tokenami**:
+
+1. **Pierwszy request** — API zwraca nowy challenge token (ważny przez N minut, domyślnie 10)
+2. **Challenge token przechowywany** — zapisany w bazie w `ksef_token_encrypted`
+3. **Challenge token wygasa** — jeśli upłynęło N minut od otrzymania
+4. **Automatyczne odświeżenie** — przy następnym logowaniu pobierany jest nowy token
+
+Czas ważności challenge tokena kontroluje parametr `.env`:
+
+```dotenv
+KSEF_CHALLENGE_TOKEN_LIFETIME=10  # minuty
+KSEF_API_TIMEOUT=30              # sekundy
+```
+
+### Poświadczenia w bazie danych
+
+Wszystkie dane są automatycznie szyfrowane i przechowywane w tabeli `ksef_credentials`:
+
+```php
+use Labapawel\KsefApi\Models\Credential;
+
+// Pobierz poświadczenia
+$credential = Credential::forEnvironmentAndNip('demo', '1234567890')->first();
+
+// Dostęp do tokenów (automatyczne deszyfrowanie)
+$challengeToken = $credential->ksef_token_encrypted;
+$accessToken = $credential->access_token_encrypted;
+$refreshToken = $credential->refresh_token_encrypted;
+
+// Sprawdź ważność
+if ($credential->isTokenValid()) {
+    // Access token nie wygasł
+}
+
+if ($credential->isTokenExpired()) {
+    // Access token wygasł, wymagane odświeżenie
+}
+
+// Meta zawiera czas otrzymania challenge tokena
+$receivedAt = $credential->meta['challenge_token_received_at'] ?? null;
+```
+
 ## Model danych
 
 ### `ksef_credentials`

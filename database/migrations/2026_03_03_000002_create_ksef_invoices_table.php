@@ -27,20 +27,26 @@ return new class extends Migration {
             $table->string('buyer_name')->nullable(); // Nazwa firmy nabywcy
 
             // === POLA INTEGRACYJNE Z KSeF ===
+            $table->string('environment', 20)->index(); // Środowisko KSeF (test/demo/prod)
             $table->string('ksef_number', 128)->nullable()->unique(); // Identyfikator faktury przydzielony przez KSeF
+            $table->string('session_id', 128)->nullable()->index(); // ID sesji z KSeF
             $table->string('reference_number', 128)->nullable()->index(); // Numer referencyjny sesji z KSeF
             
             // Status przetwarzania
             $table->string('status', 40)->default('pending')->index(); // Enum: pending | processing | accepted | rejected | itp.
-
+            $table->boolean('is_signed')->default(false)->index(); // Czy faktura jest podpisana XAdES
+            
             // === ZASZYFROWANA ZAWARTOŚĆ FAKTURY ===
             // Pełny XML faktury zaszyfrowany kluczem aplikacji
             $table->longText('xml_encrypted'); // Kompletny XML faktury (zaszyfrowany)
             $table->string('xml_hash', 128)->nullable()->index(); // Hash SHA-256 do sprawdzenia integralności
+            $table->longText('signature_encrypted')->nullable(); // Podpis XAdES (zaszyfrowany)
 
-            // Metadane i cykl życia
+            // Metadane, błędy i cykl życia
             $table->json('meta')->nullable(); // Dane podatkowe, kwoty, podsumowanie pozycji
+            $table->json('error_details')->nullable(); // Szczegóły błędu jeśli faktura odrzucona
             $table->timestamp('processed_at')->nullable(); // Kiedy KSeF przetworzył tę fakturę
+            $table->timestamp('submitted_at')->nullable(); // Kiedy faktura została wysłana do KSeF
             $table->timestamps(); // created_at, updated_at
         });
         
