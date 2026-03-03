@@ -361,6 +361,53 @@ KSEF_INVOICES_TABLE=ksef_invoices                 # nazwa tabeli
 - **TEST:** `https://api-test.ksef.mf.gov.pl/v2`
 - **DEMO:** `https://api-demo.ksef.mf.gov.pl/v2`
 - **PROD:** `https://api.ksef.mf.gov.pl/v2`
+- **PROD:** `https://api.ksef.mf.gov.pl/v2`
+
+---
+
+## Komendy Artisan
+
+Pakiet udostępnia własne komendy konsolowe do zarządzania konfiguracją.
+
+### `ksef:generate-key`
+
+Generuje losowy, silny klucz szyfrowania APP_KEY (AES-256-CBC).
+
+**Składnia:**
+```bash
+php artisan ksef:generate-key [--show] [--force]
+```
+
+**Opcje:**
+- `--show` - Wyświetl wygenerowany klucz bez zapisywania do pliku .env
+- `--force` - Wymuś nadpisanie istniejącego klucza (UWAGA: zaszyfrowane dane staną się nieosiągalne!)
+
+**Przykłady:**
+
+```bash
+# Wygeneruj i zapisz klucz do .env
+php artisan ksef:generate-key
+
+# Tylko wyświetl wygenerowany klucz (bez modyfikacji .env)
+php artisan ksef:generate-key --show
+
+# Nadpisz istniejący klucz (użyj ostrożnie!)
+php artisan ksef:generate-key --force
+```
+
+**Wyjście (przykład):**
+```
+Klucz szyfrowania został wygenerowany pomyślnie.
+
+UWAGA: Zachowaj kopię zapasową tego klucza w bezpiecznym miejscu!
+UWAGA: Zmiana klucza po zaszyfrowaniu danych uniemożliwi ich odczyt.
+```
+
+**Alternatywa Laravel:**
+Możesz także użyć standardowej komendy Laravel:
+```bash
+php artisan key:generate
+```
 
 ---
 

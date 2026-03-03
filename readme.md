@@ -3,6 +3,25 @@
 Komponent Laravel do integracji z API KSeF.
 
 Repozytorium/paczka: `labapawel/ksef-api`
+Repozytorium/paczka: `labapawel/ksef-api`
+
+## Quick Start
+
+```bash
+# 1. Instalacja pakietu
+composer require labapawel/ksef-api
+
+# 2. Wygeneruj klucz szyfrowania (jeśli nie masz APP_KEY)
+php artisan ksef:generate-key
+
+# 3. Uruchom migracje
+php artisan migrate
+
+# 4. Skonfiguruj środowisko w .env
+# KSEF_ENV=demo
+
+# Gotowe! Możesz teraz korzystać z modeli Credential i Invoice
+```
 
 ## Zakres
 
@@ -41,6 +60,43 @@ php artisan migrate
 
 Paczka rejestruje też migracje przez `loadMigrationsFrom`, więc publikacja jest opcjonalna, jeśli uruchamiasz migracje paczki bezpośrednio.
 
+## Generowanie klucza szyfrowania
+
+Pakiet używa standardowego mechanizmu Laravel Encryption z kluczem `APP_KEY`. Możesz wygenerować silny klucz na kilka sposobów:
+
+### Opcja 1: Komenda Laravel (zalecana)
+
+```bash
+php artisan key:generate
+```
+
+### Opcja 2: Komenda KSeF (alternatywa)
+
+Pakiet udostępnia własną komendę do generowania klucza:
+
+```bash
+php artisan ksef:generate-key
+```
+
+**Opcje:**
+- `--show` - Wyświetl wygenerowany klucz bez zapisywania do .env
+- `--force` - Wymuś nadpisanie istniejącego klucza (UWAGA: zaszyfrowane dane staną się nieosiągalne!)
+
+**Przykłady użycia:**
+
+```bash
+# Wygeneruj i zapisz klucz do .env
+php artisan ksef:generate-key
+
+# Tylko wyświetl wygenerowany klucz
+php artisan ksef:generate-key --show
+
+# Nadpisz istniejący klucz (użyj ostrożnie!)
+php artisan ksef:generate-key --force
+```
+
+⚠️ **Ostrzeżenie:** Zmiana klucza `APP_KEY` po zaszyfrowaniu danych w bazie uniemożliwi ich odczyt! Zawsze twórz backup klucza przed jego zmianą.
+
 ## Zmienne środowiskowe
 
 Przykładowe wartości `.env`:
@@ -57,10 +113,6 @@ KSEF_CREDENTIALS_TABLE=ksef_credentials
 KSEF_INVOICES_TABLE=ksef_invoices
 ```
 
-⚠️ **Uwaga o szyfrowaniu:** Pakiet używa standardowego mechanizmu Laravel Encryption, który korzysta z klucza `APP_KEY` z głównej konfiguracji aplikacji. Upewnij się, że masz wygenerowany silny klucz aplikacji:
-
-```bash
-php artisan key:generate
 ```
 
 ### Opis parametrów
@@ -527,12 +579,4 @@ $credentials = DataFactory::createCredentials(5, 'demo');
 $invoice = DataFactory::createInvoice();
 
 // Utwórz zaakceptowaną fakturę
-$invoice = DataFactory::createAcceptedInvoice();
-
-// Utwórz wygaśnięte poświadczenie
-$credential = DataFactory::createExpiredCredential();
-```
-
-## Licencja
-
-MIT
+$invoice = DataFactory::createA

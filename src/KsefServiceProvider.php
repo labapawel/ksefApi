@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Labapawel\KsefApi;
 
 use Illuminate\Support\ServiceProvider;
+use Labapawel\KsefApi\Console\Commands\GenerateEncryptionKeyCommand;
 
 class KsefServiceProvider extends ServiceProvider
 {
@@ -24,5 +25,12 @@ class KsefServiceProvider extends ServiceProvider
         $this->publishes([
             __DIR__ . '/../database/migrations' => database_path('migrations'),
         ], 'ksef-migrations');
+
+        // Rejestracja komend Artisan
+        if ($this->app->runningInConsole()) {
+            $this->commands([
+                GenerateEncryptionKeyCommand::class,
+            ]);
+        }
     }
 }
