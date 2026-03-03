@@ -1,8 +1,15 @@
 {
 	"name": "labapawel/ksef-api",
-	"description": "Laravel component for KSeF API authentication, invoice sending and invoice retrieval.",
+	"description": "Komponent Laravel do integracji z API KSeF — uwierzytelnianie, wysyłanie faktur, pobieranie danych, przechowywanie zaszyfrowanych poświadczeń i dokumentów.",
 	"type": "library",
 	"license": "MIT",
+	"homepage": "https://github.com/labapawel/ksef-api",
+	"authors": [
+		{
+			"name": "Paweł Łaba",
+			"email": "labapawel@gmail.com"
+		}
+	],
 	"require": {
 		"php": "^8.2",
 		"ext-curl": "*",
