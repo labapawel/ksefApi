@@ -3,7 +3,6 @@
 Komponent Laravel do integracji z API KSeF.
 
 Repozytorium/paczka: `labapawel/ksef-api`
-Repozytorium/paczka: `labapawel/ksef-api`
 
 ## Quick Start
 
@@ -17,8 +16,7 @@ php artisan ksef:generate-key
 # 3. Uruchom migracje
 php artisan migrate
 
-# 4. Skonfiguruj środowisko w .env
-# KSEF_ENV=demo
+# 4. Zapisz poświadczenia (environment + api_url) w tabeli ksef_credentials
 
 # Gotowe! Możesz teraz korzystać z modeli Credential i Invoice
 ```
@@ -102,51 +100,42 @@ php artisan ksef:generate-key --force
 Przykładowe wartości `.env`:
 
 ```dotenv
-# Wymagane
-KSEF_ENV=demo
-
 # Opcjonalne (z domyślnymi wartościami)
-KSEF_URL=https://api-demo.ksef.mf.gov.pl/v2
 KSEF_CHALLENGE_TOKEN_LIFETIME=10
 KSEF_API_TIMEOUT=30
 KSEF_CREDENTIALS_TABLE=ksef_credentials
 KSEF_INVOICES_TABLE=ksef_invoices
 ```
 
-```
+`environment` oraz `api_url` przechowuj w bazie danych w tabeli `ksef_credentials` (kolumny `environment`, `api_url`) per NIP.
 
 ### Opis parametrów
 
 | Parametr | Wymagany | Domyślna wartość | Opis |
 |----------|----------|------------------|------|
-| `KSEF_ENV` | ✅ | `demo` | Środowisko KSeF: `test`, `demo`, lub `prod` |
-| `KSEF_URL` | ❌ | Zależny od `KSEF_ENV` | URL endpointa API KSeF. Automatycznie ustawiane na podstawie środowiska:<br>• `test`: `https://api-test.ksef.mf.gov.pl/v2`<br>• `demo`: `https://api-demo.ksef.mf.gov.pl/v2`<br>• `prod`: `https://api.ksef.mf.gov.pl/v2` |
 | `KSEF_CHALLENGE_TOKEN_LIFETIME` | ❌ | `10` | Czas ważności challenge tokena w minutach. Po tym czasie wymagane ponowne logowanie. |
 | `KSEF_API_TIMEOUT` | ❌ | `30` | Timeout dla żądań HTTP do API KSeF w sekundach. |
 | `KSEF_CREDENTIALS_TABLE` | ❌ | `ksef_credentials` | Nazwa tabeli w bazie danych dla poświadczeń KSeF. |
 | `KSEF_INVOICES_TABLE` | ❌ | `ksef_invoices` | Nazwa tabeli w bazie danych dla faktur. |
 
-### Wartości dla poszczególnych środowisk
+### Środowisko i URL API w bazie
 
-**Środowisko TEST:**
-```dotenv
-KSEF_ENV=test
-KSEF_URL=https://api-test.ksef.mf.gov.pl/v2
+Każdy rekord poświadczeń może mieć własne wartości:
+
+- `environment`: `test`, `demo` lub `prod`
+- `api_url`: np. `https://api-demo.ksef.mf.gov.pl/v2`
+
+Przykład zapisu w modelu:
+
+```php
+Credential::create([
+    'environment' => 'demo',
+    'api_url' => 'https://api-demo.ksef.mf.gov.pl/v2',
+    'nip' => '1234567890',
+]);
 ```
 
-**Środowisko DEMO:**
-```dotenv
-KSEF_ENV=demo
-KSEF_URL=https://api-demo.ksef.mf.gov.pl/v2
-```
-
-**Środowisko PRODUCTION:**
-```dotenv
-KSEF_ENV=prod
-KSEF_URL=https://api.ksef.mf.gov.pl/v2
-```
-
-⚠️ **Ważne**: Każde środowisko ma zupełnie inne certyfikaty, tokeny i dane poświadczeń. Nigdy nie mieszaj środowisk!
+⚠️ **Ważne:** Nie mieszaj środowisk dla jednego zestawu poświadczeń i NIP.
 
 ## Autentykacja
 
