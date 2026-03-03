@@ -125,6 +125,22 @@ Każdy rekord poświadczeń może mieć własne wartości:
 - `environment`: `test`, `demo` lub `prod`
 - `api_url`: np. `https://api-demo.ksef.mf.gov.pl/v2`
 
+Przykładowe wartości:
+
+**Środowisko DEMO:**
+
+```dotenv
+KSEF_ENV=demo
+KSEF_URL=https://api-demo.ksef.mf.gov.pl/v2
+```
+
+**Środowisko PRODUCTION:**
+
+```dotenv
+KSEF_ENV=prod
+KSEF_URL=https://api.ksef.mf.gov.pl/v2
+```
+
 Przykład zapisu w modelu:
 
 ```php
