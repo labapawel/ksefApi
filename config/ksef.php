@@ -5,6 +5,7 @@ return [
     'api_url' => env('KSEF_URL', 'https://api-demo.ksef.mf.gov.pl/v2'),
 
     'credentials_table' => env('KSEF_CREDENTIALS_TABLE', 'ksef_credentials'),
+    'environments_table' => env('KSEF_ENVIRONMENTS_TABLE', 'ksef_environments'),
     'invoices_table' => env('KSEF_INVOICES_TABLE', 'ksef_invoices'),
 
     // Czas ważności challenge tokena (w minutach) — po tym czasie wymagane ponowne logowanie

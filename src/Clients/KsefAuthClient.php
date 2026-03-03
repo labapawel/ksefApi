@@ -353,4 +353,6 @@ class KsefAuthClient
     public function refreshToken(string $nip, string $refreshToken): AuthenticationResponse
     {
         // TODO: Implementacja
-        throw new KsefApiException('Метода refreshToken nie jest jeszcze zaimplementowana
+        throw new KsefApiException('Метода refreshToken nie jest jeszcze zaimplementowana');
+    }
+}

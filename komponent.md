@@ -35,6 +35,7 @@ src/
 │   ├── KsefApiException.php
 │   └── KsefAuthenticationException.php
 ├── Models/               # Modele Eloquent
+│   ├── KsefEnvironment.php # Środowiska (test, demo, prod)
 │   ├── Credential.php    # Poświadczenia (NIP + środowisko)
 │   └── Invoice.php       # Faktury
 ├── Repositories/         # Warstwa biznesowa nad modelami
@@ -60,18 +61,49 @@ src/
 
 ## Baza danych
 
+### Tabela `ksef_environments`
+
+Przechowuje konfiguracje środowisk KSeF (test, demo, prod).
+
+**Pola:**
+
+| Kolumna | Typ | Opis |
+|---------|-----|------|
+| `id` | bigint | ID autoinkrementowane (PK) |
+| `environment` | string(50) | Unikatowy identyfikator: `test`, `demo`, `prod` |
+| `api_url` | string | URL endpointa API KSeF dla danego środowiska |
+| `description` | string | Opcjonalny opis środowiska (np. "Demonstracyjne") |
+| `is_active` | boolean | Czy środowisko jest aktywne (domyślnie: `true`) |
+| `created_at` | timestamp | Data utworzenia |
+| `updated_at` | timestamp | Data ostatniej modyfikacji |
+
+**Indeksy:**
+- UNIQUE: `environment` - unikalne identyfikatory środowisk
+- INDEX: `is_active` - filtracja środowisk aktywnych
+
+**Domyślne środowiska (załadowywane przez seeder):**
+
+| environment | api_url |
+|-------------|---------|
+| `test` | `https://api-test.ksef.mf.gov.pl/v2` |
+| `demo` | `https://api-demo.ksef.mf.gov.pl/v2` |
+| `prod` | `https://ksef.mf.gov.pl/api/v2` |
+
+---
+
 ### Tabela `ksef_credentials`
 
-Przechowuje zaszyfrowane poświadczenia KSeF dla kombinacji `environment + nip`.
+Przechowuje zaszyfrowane poświadczenia KSeF dla kombinacji `ksef_environment_id + nip`.
 
 **Pola:**
 
 | Kolumna | Typ | Szyfrowane | Opis |
 |---------|-----|------------|------|
 | `id` | bigint | ❌ | ID autoinkrementowane |
-| `environment` | string(20) | ❌ | Środowisko: test/demo/prod |
+| `ksef_environment_id` | bigint (FK) | ❌ | Foreign Key do `ksef_environments` |
+| `environment` | string(20) | ❌ | Legacy: Środowisko (dla backward compatibility) |
 | `nip` | string(20) | ❌ | NIP podatnika |
-| `api_url` | string | ❌ | URL endpointa API KSeF |
+| `api_url` | string | ❌ | Legacy: URL endpointa API (dla backward compatibility) |
 | `ksef_token_encrypted` | longText | ✅ | Challenge token z API |
 | `access_token_encrypted` | longText | ✅ | JWT access token |
 | `refresh_token_encrypted` | longText | ✅ | JWT refresh token |
@@ -88,14 +120,16 @@ Przechowuje zaszyfrowane poświadczenia KSeF dla kombinacji `environment + nip`.
 | `updated_at` | timestamp | ❌ | Data ostatniej modyfikacji |
 
 **Indeksy:**
-- UNIQUE: `(environment, nip)` - jedna para poświadczeń na środowisko+NIP
-- INDEX: `environment`
+- UNIQUE: `(ksef_environment_id, nip)` - jedna para poświadczeń na środowisko+NIP
+- FOREIGN KEY: `ksef_environment_id` → `ksef_environments.id` (onDelete: RESTRICT)
 - INDEX: `nip`
 
 **Uwagi:**
 - Wszystkie `*_encrypted` kolumny są automatycznie szyfrowane/deszyfrowane przez Laravel Encryption
 - Klucz szyfrowania pochodzi z `APP_KEY` aplikacji Laravel
 - Challenge token jest ważny przez 10 minut (konfigurowalny przez `KSEF_CHALLENGE_TOKEN_LIFETIME`)
+- Legacy pola `environment` i `api_url` są opcjonalne - preferuj użycie relacji `environment()->api_url`
+- Foreign key `ksef_environment_id` nie pozwala usuwać środowiska (RESTRICT) aby zapobiec sieroceniu poświadczeń
 
 ### Tabela `ksef_invoices`
 

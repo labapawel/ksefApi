@@ -16,9 +16,12 @@ php artisan ksef:generate-key
 # 3. Uruchom migracje
 php artisan migrate
 
-# 4. Zapisz poświadczenia (environment + api_url + certyfikat) w tabeli ksef_credentials
+# 4. (Opcjonalnie) Załaduj domyślne środowiska do bazy
+php artisan db:seed --class=Labapawel\\KsefApi\\Database\\Seeders\\KsefEnvironmentSeeder
 
-# Gotowe! Możesz teraz korzystać z modeli Credential i Invoice
+# 5. Zapisz poświadczenia (certyfikat + NIP + środowisko) w tabeli ksef_credentials
+
+# Gotowe! Możesz teraz korzystać z modeli KsefEnvironment, Credential i Invoice
 ```
 
 ## Zakres
@@ -27,9 +30,11 @@ Aktualny szkielet paczki zawiera:
 
 - provider Laravel z publikacją konfiguracji i migracji
 - plik konfiguracyjny paczki: `config/ksef.php`
-- migracje dla tabel z poświadczeniami i fakturami
-- **Modele Eloquent**: `Credential` i `Invoice` z Scopes i metodami pomocniczymi
-- bazowe klasy placeholder: kontrakty/klienci/repozytoria/DTO
+- migracje dla tabel: `ksef_environments`, `ksef_credentials`, `ksef_invoices`
+- seeder dla domyślnych środowisk KSeF: `KsefEnvironmentSeeder`
+- **Modele Eloquent**: `KsefEnvironment`, `Credential` i `Invoice` z Scopes i metodami pomocniczymi
+- bazowe klasy placeholder: kontrakty/klienty/repozytoria/DTO
+- serwisy wysokiego poziomu: `AuthenticationService`
 
 ## Wymagania
 
@@ -104,10 +109,11 @@ Przykładowe wartości `.env`:
 KSEF_CHALLENGE_TOKEN_LIFETIME=10
 KSEF_API_TIMEOUT=30
 KSEF_CREDENTIALS_TABLE=ksef_credentials
+KSEF_ENVIRONMENTS_TABLE=ksef_environments
 KSEF_INVOICES_TABLE=ksef_invoices
 ```
 
-`environment` oraz `api_url` przechowuj w bazie danych w tabeli `ksef_credentials` per NIP, razem z certyfikatem i kluczem prywatnym (kolumny `certificate_encrypted`, `private_key_encrypted`, `certificate_password_encrypted`).
+Konfiguracje środowisk (environment + api_url) są przechowywane w tabeli `ksef_environments`, co pozwala na obsługę wielu środowisk bez potrzeby zmian w `.env`. Poświadczenia są przechowywane w `ksef_credentials` z certyfikatem i innymi danymi wrażliwymi (kolumny `certificate_encrypted`, `private_key_encrypted`, `certificate_password_encrypted`).
 
 ### Opis parametrów
 
@@ -116,45 +122,79 @@ KSEF_INVOICES_TABLE=ksef_invoices
 | `KSEF_CHALLENGE_TOKEN_LIFETIME` | ❌ | `10` | Czas ważności challenge tokena w minutach. Po tym czasie wymagane ponowne logowanie. |
 | `KSEF_API_TIMEOUT` | ❌ | `30` | Timeout dla żądań HTTP do API KSeF w sekundach. |
 | `KSEF_CREDENTIALS_TABLE` | ❌ | `ksef_credentials` | Nazwa tabeli w bazie danych dla poświadczeń KSeF. |
+| `KSEF_ENVIRONMENTS_TABLE` | ❌ | `ksef_environments` | Nazwa tabeli w bazie danych dla konfiguracji środowisk KSeF. |
 | `KSEF_INVOICES_TABLE` | ❌ | `ksef_invoices` | Nazwa tabeli w bazie danych dla faktur. |
 
-### Środowisko i URL API w bazie
+### Środowiska KSeF
 
-Każdy rekord poświadczeń może mieć własne wartości:
+Pakiet przechowuje konfiguracje środowisk w tabeli `ksef_environments`, co pozwala na obsługę wielu środowisk (test, demo, prod) bez potrzeby konfigurowania wartości w `.env`.
 
-- `environment`: `test`, `demo` lub `prod`
-- `api_url`: np. `https://api-demo.ksef.mf.gov.pl/v2`
+#### Domyślne środowiska
 
-Przykładowe wartości:
-
-**Środowisko DEMO:**
-
-```dotenv
-KSEF_ENV=demo
-KSEF_URL=https://api-demo.ksef.mf.gov.pl/v2
-```
-
-**Środowisko PRODUCTION:**
-
-```dotenv
-KSEF_ENV=prod
-KSEF_URL=https://api.ksef.mf.gov.pl/v2
-```
-
-Przykład zapisu w modelu:
+Po uruchomieniu migracji i seedera, w bazie będą dostępne trzy środowiska:
 
 ```php
+use Labapawel\KsefApi\Models\KsefEnvironment;
+
+// Pobierz środowisko po identyfikatorze
+$demo = KsefEnvironment::findByEnvironment('demo');
+
+// Pobierz tylko aktywne środowiska
+$active = KsefEnvironment::active()->get();
+
+// Dostęp do danych
+echo $demo->api_url;  // https://api-demo.ksef.mf.gov.pl/v2
+```
+
+#### Seeder
+
+Aby załadować domyślne środowiska do bazy:
+
+```bash
+php artisan db:seed --class=Labapawel\\KsefApi\\Database\\Seeders\\KsefEnvironmentSeeder
+```
+
+Lub dodaj do `DatabaseSeeder`:
+
+```php
+$this->call(KsefEnvironmentSeeder::class);
+```
+
+#### Ręczne dodanie środowiska
+
+```php
+KsefEnvironment::create([
+    'environment' => 'staging',
+    'api_url' => 'https://api-staging.ksef.mf.gov.pl/v2',
+    'description' => 'Środowisko staging',
+    'is_active' => true,
+]);
+```
+
+#### Powiązanie poświadczeń ze środowiskiem
+
+Każde poświadczenie jest powiązane z jednym środowiskiem przez `ksef_environment_id`:
+
+```php
+use Labapawel\KsefApi\Models\Credential;
+use Labapawel\KsefApi\Models\KsefEnvironment;
+
+// Pobierz środowisko
+$demo = KsefEnvironment::findByEnvironment('demo');
+
+// Utwórz poświadczenia dla tego środowiska
 Credential::create([
-    'environment' => 'demo',
-    'api_url' => 'https://api-demo.ksef.mf.gov.pl/v2',
+    'ksef_environment_id' => $demo->id,  // Foreign key do środowiska
     'nip' => '1234567890',
     'certificate_encrypted' => $certificatePem,
     'private_key_encrypted' => $privateKeyPem,
     'certificate_password_encrypted' => $certificatePassword,
 ]);
-```
 
-⚠️ **Ważne:** Nie mieszaj środowisk dla jednego zestawu poświadczeń i NIP.
+// Lub szybciej — korzystając ze scope
+$cred = Credential::forEnvironmentAndNip('demo', '1234567890')->first();
+echo $cred->environment->api_url;  // https://api-demo.ksef.mf.gov.pl/v2
+```
 
 ## Autentykacja
 
@@ -268,11 +308,34 @@ $accessExpiresAt = $credential->token_expires_at;
 
 ## Model danych
 
+### Diagram relacji
+
+```
+ksef_environments (1)
+      ↑
+      │ (1:N)
+      │ ksef_environment_id
+      │
+ksef_credentials (N)  ←→  ksef_invoices (N)
+```
+
+### `ksef_environments`
+
+Tabela przechowuje konfiguracje środowisk (test, demo, prod):
+
+- `environment`: Unikatowy identyfikator środowiska (`test`, `demo`, `prod`)
+- `api_url`: URL endpointa API KSeF dla tego środowiska
+- `description`: Opis środowiska (opcjonalnie)
+- `is_active`: Status aktywności środowiska
+
+**Relacja:** Jedno środowisko może mieć wiele poświadczeń (1:N)
+
 ### `ksef_credentials`
 
-Tabela przechowuje zaszyfrowane dane wrażliwe KSeF dla pary `environment + nip`:
+Tabela przechowuje zaszyfrowane dane wrażliwe KSeF dla pary `ksef_environment_id + nip`:
 
-- identyfikatory: `environment`, `nip`, `api_url` (URL endpointa API)
+- identyfikatory: `ksef_environment_id` (foreign key do `ksef_environments`), `nip`
+- legacy pola: `environment`, `api_url` (dla backward compatibility)
 - zaszyfrowane: token KSeF (challenge), access token, refresh token
 - zaszyfrowane: certyfikat, klucz prywatny, hasło do certyfikatu
 - lifecycle: `challenge_token_received_at`, `challenge_token_expires_at`, `token_expires_at`
@@ -289,7 +352,29 @@ Tabela przechowuje metadane biznesowe faktury oraz zaszyfrowany XML:
 
 ## Modele Eloquent
 
-Paczka udostępnia dwa modele Eloquent z potężnymi scopes i metodami pomocniczymi.
+Paczka udostępnia modele Eloquent z potężnymi scopes i metodami pomocniczymi.
+
+### Model `KsefEnvironment`
+
+Przechowuje konfiguracje środowisk KSeF.
+
+```php
+use Labapawel\KsefApi\Models\KsefEnvironment;
+
+// Pobierz środowisko
+$demo = KsefEnvironment::findByEnvironment('demo');
+$prod = KsefEnvironment::findActiveByEnvironment('prod');
+
+// Dostępne scopes
+KsefEnvironment::active()->get();                    // tylko aktywne
+KsefEnvironment::byEnvironment('demo')->first();     // po ID
+
+// Dostęp do danych
+echo $demo->api_url;        // https://api-demo.ksef.mf.gov.pl/v2
+
+// Relacja do poświadczeń
+$credentials = $demo->credentials()->get();  // wszystkie kredencje dla demo
+```
 
 ### Model `Credential`
 
@@ -298,20 +383,31 @@ Przechowuje poświadczenia KSeF dla pary `environment + nip`.
 ```php
 use Labapawel\KsefApi\Models\Credential;
 
-// Szukaj poświadczeń
+// Szukaj poświadczeń (nowe podejście — przez string environment)
 $credential = Credential::forEnvironmentAndNip('demo', '1234567890')
     ->withCertificate()
     ->orderByDesc('updated_at')
     ->first();
 
+// Lub przez ID środowiska (szybciej)
+$envId = KsefEnvironment::findByEnvironment('demo')->id;
+$credential = Credential::forEnvironmentIdAndNip($envId, '1234567890')
+    ->withCertificate()
+    ->orderByDesc('updated_at')
+    ->first();
+
 // Dostępne scopes
-Credential::environment('demo')->get();
+Credential::environment('demo')->get();                          // legacy
 Credential::nip('1234567890')->get();
-Credential::apiUrl('https://ksef-demo.mf.gov.pl/api')->get();
-Credential::withCertificate()->get();
-Credential::forEnvironmentAndNip('demo', '1234567890')->first();
-Credential::validToken()->get();              // tylko z ważnym access tokenem
-Credential::validChallengeToken()->get();     // tylko z ważnym challenge tokenem
+Credential::forEnvironmentAndNip('demo', '1234567890')->get();   // ze string environment
+Credential::forEnvironmentIdAndNip($envId, '1234567890')->get(); // z foreign key (szybciej)
+Credential::forEnvironmentId($envId)->get();                     // wszystkie kredencje dla środowiska
+Credential::withCertificate()->get();                            // z kompletnym certyfikatem
+Credential::validToken()->get();                                 // z ważnym access tokenem
+Credential::validChallengeToken()->get();                        // z ważnym challenge tokenem
+
+// Relacja do środowiska
+echo $credential->environment->api_url;
 
 // Sprawdzenie ważności access tokena
 if ($credential->isTokenValid()) {

@@ -12,10 +12,15 @@ return new class extends Migration {
         Schema::create('ksef_credentials', function (Blueprint $table): void {
             $table->id();
             
-            // Identyfikatory: środowisko (test/demo/prod) + NIP podatnika
-            $table->string('environment', 20)->index();
+            // Foreign Key do środowiska KSeF
+            $table->foreignId('ksef_environment_id')
+                ->constrained('ksef_environments')
+                ->onDelete('restrict'); // Nie pozwalaj usuwać środowiska które jest w użyciu
+            
+            // Identyfikatory: środowisko (legacy string) + NIP podatnika
+            $table->string('environment', 20)->index(); // Legacy pole dla backward compatibility
             $table->string('nip', 20)->index();
-            $table->string('api_url')->nullable(); // URL endpointa API KSeF
+            $table->string('api_url')->nullable(); // Legacy pole dla backward compatibility
 
             // === ZASZYFROWANE DANE WRAŻLIWE ===
             // Wszystkie poświadczenia muszą być przechowywane zaszyfrowane za pomocą klucza Laravel
@@ -39,8 +44,8 @@ return new class extends Migration {
             $table->json('meta')->nullable(); // Dodatkowe informacje (wystawca, temat, itp.)
             $table->timestamps(); // created_at, updated_at
 
-            // Unikalny warunek: jeden rekord poświadczeń na parę środowisko+nip
-            $table->unique(['environment', 'nip']);
+            // Unikalny warunek: jeden rekord poświadczeń na parę (ksef_environment_id, nip)
+            $table->unique(['ksef_environment_id', 'nip']);
         });
         
     }

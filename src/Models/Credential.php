@@ -6,6 +6,7 @@ namespace Labapawel\KsefApi\Models;
 
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class Credential extends Model
 {
@@ -22,6 +23,7 @@ class Credential extends Model
      * @var list<string>
      */
     protected $fillable = [
+        'ksef_environment_id',
         'environment',
         'nip',
         'api_url',
@@ -70,6 +72,16 @@ class Credential extends Model
     ];
 
     /**
+     * Relacja: poświadczenia należą do środowiska KSeF.
+     *
+     * @return BelongsTo
+     */
+    public function environment(): BelongsTo
+    {
+        return $this->belongsTo(KsefEnvironment::class, 'ksef_environment_id');
+    }
+
+    /**
      * Filtruj poświadczenia dla danego środowiska.
      *
      * @param Builder<Credential> $query
@@ -96,6 +108,8 @@ class Credential extends Model
     /**
      * Filtruj poświadczenia dla danego środowiska i NIP.
      *
+     * Obsługuje zarówno nowe podejście (z foreign key) jak i legacy (string environment).
+     *
      * @param Builder<Credential> $query
      * @param string $environment
      * @param string $nip
@@ -103,7 +117,36 @@ class Credential extends Model
      */
     public function scopeForEnvironmentAndNip(Builder $query, string $environment, string $nip): Builder
     {
-        return $query->where('environment', $environment)->where('nip', $nip);
+        return $query
+            ->whereHas('environment', function (Builder $q) use ($environment) {
+                $q->where('environment', $environment);
+            })
+            ->where('nip', $nip);
+    }
+
+    /**
+     * Filtruj poświadczenia dla danego ID środowiska i NIP (bezpośrednie, szybsze).
+     *
+     * @param Builder<Credential> $query
+     * @param int $ksefEnvironmentId
+     * @param string $nip
+     * @return Builder<Credential>
+     */
+    public function scopeForEnvironmentIdAndNip(Builder $query, int $ksefEnvironmentId, string $nip): Builder
+    {
+        return $query->where('ksef_environment_id', $ksefEnvironmentId)->where('nip', $nip);
+    }
+
+    /**
+     * Filtruj poświadczenia dla danego ID środowiska (foreign key).
+     *
+     * @param Builder<Credential> $query
+     * @param int $ksefEnvironmentId
+     * @return Builder<Credential>
+     */
+    public function scopeForEnvironmentId(Builder $query, int $ksefEnvironmentId): Builder
+    {
+        return $query->where('ksef_environment_id', $ksefEnvironmentId);
     }
 
     /**
