@@ -54,14 +54,32 @@ composer require labapawel/ksef-api
 php artisan vendor:publish --tag=ksef-config
 ```
 
-## Publikacja migracji
+## Publikacja migracji i seeders
 
 ```bash
+# Publikacja migracji
 php artisan vendor:publish --tag=ksef-migrations
 php artisan migrate
+
+# Publikacja seeders (opcjonalnie)
+php artisan vendor:publish --tag=ksef-seeders
 ```
 
-Paczka rejestruje też migracje przez `loadMigrationsFrom`, więc publikacja jest opcjonalna, jeśli uruchamiasz migracje paczki bezpośrednio.
+Paczka rejestruje też migracje przez `loadMigrationsFrom`, więc publikacja migracji jest opcjonalna.
+
+## Załadowanie domyślnych środowisk
+
+Aby załadować 3 domyślne środowiska (test, demo, prod):
+
+```bash
+php artisan db:seed --class="Labapawel\KsefApi\Database\Seeders\KsefEnvironmentSeeder"
+```
+
+Lub po opublikowaniu seeders:
+
+```bash
+php artisan db:seed --class="KsefEnvironmentSeeder"
+```
 
 ## Generowanie klucza szyfrowania
 
