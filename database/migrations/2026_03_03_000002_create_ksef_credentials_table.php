@@ -36,7 +36,7 @@ return new class extends Migration {
             $table->timestamp('challenge_token_expires_at')->nullable(); // Kiedy challenge token wygasa
             $table->timestamp('token_expires_at')->nullable(); // Data wygaśnięcia access_token
             
-            // === DANE FIRMY WYSTAWIAJĄCEJ FAKTURY ===
+            // === DANE FIRMY WYSTAWIAJĄCEJ FAKTURY === 
             $table->string('company_name')->nullable()->index(); // Nazwa firmy
             $table->string('company_nip', 20)->nullable()->index(); // NIP firmy (może być inny niż nip w credentials)
             $table->string('company_regon', 20)->nullable(); // REGON firmy
