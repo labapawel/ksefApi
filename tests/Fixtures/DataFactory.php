@@ -33,6 +33,18 @@ class DataFactory
             'challenge_token_received_at' => now(),
             'challenge_token_expires_at' => now()->addMinutes(10),
             'token_expires_at' => now()->addHours(24),
+            // Dane firmy wystawiającej faktury
+            'company_name' => 'Testowa Firma Sp. z o.o.',
+            'company_nip' => '7986711699',
+            'company_regon' => '014213425',
+            'street' => 'Marszałkowska',
+            'street_number' => '123',
+            'apartment_number' => 'A/4',
+            'postal_code' => '00-001',
+            'city' => 'Warszawa',
+            'email' => 'kontakt@testowa-firma.pl',
+            'phone' => '+48123456789',
+            'bank_account' => 'PL61109010140000071219812874',
             'scopes' => ['InvoiceWrite', 'InvoiceRead'],
             'permissions' => ['send_invoice', 'get_invoice'],
             'meta' => [

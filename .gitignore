@@ -1,2 +1,36 @@
-komponent.md
+# Dependencies
+vendor/
+node_modules/
+
+# Environment
+.env
+.env.local
+.env.*.local
+
+# IDE & Editor
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+.DS_Store
+
+# Testing
+.phpunit.result.cache
+phpunit.xml
+
+# Composer
+composer.lock
+composer.phar
+
+# Logs
+*.log
+logs/
+
+# Temp files
+tmp/
+temp/
+_temp/
+
+# Generated files
 komponent.md

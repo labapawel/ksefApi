@@ -685,4 +685,273 @@ $credentials = DataFactory::createCredentials(5, 'demo');
 $invoice = DataFactory::createInvoice();
 
 // Utwórz zaakceptowaną fakturę
+$acceptedInvoice = DataFactory::createInvoice(['status' => 'accepted']);
+
+// Utwórz fakturę dla konkretnego sprzedawcy
+$sellerInvoice = DataFactory::createInvoice([
+    'seller_nip' => '7986711699',
+    'seller_name' => 'Acme Corp',
+]);
+```
+
+## Szyfrowanie i Bezpieczeństwo
+
+### Dane zaszyfrowane
+
+Pakiet automatycznie szyfruje wszystkie wrażliwe dane za pomocą Laravel Encryption (AES-256-CBC):
+
+**Model Credential:**
+- `ksef_token_encrypted` — Challenge token z KSeF API
+- `access_token_encrypted` — JWT access token
+- `refresh_token_encrypted` — JWT refresh token
+- `certificate_encrypted` — Certyfikat X.509
+- `private_key_encrypted` — Klucz prywatny RSA
+- `certificate_password_encrypted` — Hasło do certyfikatu
+
+**Model Invoice:**
+- `xml_encrypted` — Pełny XML faktury
+- `signature_encrypted` — Podpis XAdES
+
+### Klucz szyfrowania
+
+- **Algorytm:** AES-256-CBC
+- **Klucz:** `APP_KEY` z konfiguracji Laravel
+- **Inicjalizacja:** `php artisan ksef:generate-key` lub `php artisan key:generate`
+
+### Bezpieczeństwo producyjnego
+
+⚠️ **Krytyczne:**
+
+1. **Nigdy** nie commituj `APP_KEY` do repozytorium — używaj `.env`
+2. **Zawsze** konfiguruj `APP_KEY` w `.env.production`
+3. **Backup** klucza przed rotacją — zmiana klucza uczyni dane niezrozumiałymi
+4. **HTTPS** — komunikacja z API KSeF zawsze po HTTPS
+5. **Certifikaty** — przechowuj certyfikaty KSeF bezpiecznie poza repozytorium
+6. **Database credentials** — chroni dostęp do bazy z poświadczeniami
+
+### Przykładowe bezpieczne środowisko
+
+```bash
+# .env.production
+APP_KEY=base64:xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx=
+KSEF_CHALLENGE_TOKEN_LIFETIME=10
+KSEF_API_TIMEOUT=30
+
+# Database
+DB_CONNECTION=mysql
+DB_HOST=secure-db-server.internal
+DB_DATABASE=ksef_production
+DB_USERNAME=ksef_user
+DB_PASSWORD=secure_password_here
+```
+
+## Architektura
+
+### Warstwa aplikacji
+
+```
+┌─────────────────────────────────────────────────────────┐
+│ Warstwa aplikacji (Laravel Controller/Service)          │
+└──────────────────────┬──────────────────────────────────┘
+                       │
+┌──────────────────────▼──────────────────────────────────┐
+│ Services (High-level API)                               │
+│ - AuthenticationService.php                             │
+└──────────────────────┬──────────────────────────────────┘
+                       │
+┌──────────────────────▼──────────────────────────────────┐
+│ Repositories (Business Logic)                           │
+│ - CredentialRepository.php                              │
+│ - InvoiceRepository.php                                 │
+└──────────────────────┬──────────────────────────────────┘
+                       │
+┌──────────────────────▼──────────────────────────────────┐
+│ Models (Eloquent ORM)                                    │
+│ - KsefEnvironment.php / Credential.php / Invoice.php   │
+└──────────────────────┬──────────────────────────────────┘
+                       │
+┌──────────────────────▼──────────────────────────────────┐
+│ Clients (HTTP Communication)                            │
+│ - KsefAuthClient.php (Authentication)                   │
+│ - KsefInvoiceClient.php (Invoice Operations)            │
+└──────────────────────┬──────────────────────────────────┘
+                       │
+┌──────────────────────▼──────────────────────────────────┐
+│ KSeF REST API                                            │
+│ https://api-demo.ksef.mf.gov.pl/v2                      │
+└─────────────────────────────────────────────────────────┘
+```
+
+### Przepływ autentykacji
+
+```
+1. Pobranie poświadczeń z bazy (ksef_credentials)
+   ↓
+2. InitializeSession (wysłanie certyfikatu + NIP do API)
+   ↓
+3. Otrzymanie challenge_token (ważny 10 minut)
+   ↓
+4. Podpisanie challenge_token certyfikatem
+   ↓
+5. AuthorizeSession (wymiana na access/refresh tokeny)
+   ↓
+6. Zapis tokenów w bazie (ksef_credentials)
+   ↓
+7. Użycie access_token do żądań biznesowych
+   ↓
+8. Automatyczne odświeżenie przy wygaśnięciu
+```
+
+## Troubleshooting
+
+### Problem: "Brak poświadczeń w bazie dla NIP XXX"
+
+**Przyczyna:** Poświadczenia nie zostały zapisane w bazie danych.
+
+**Rozwiązanie:**
+
+```php
+use Labapawel\KsefApi\Models\KsefEnvironment;
+use Labapawel\KsefApi\Models\Credential;
+
+// Pobierz środowisko
+$env = KsefEnvironment::findByEnvironment('demo');
+
+// Wczytaj certyfikat z pliku
+$cert = file_get_contents('/path/to/cert.pem');
+$key = file_get_contents('/path/to/key.pem');
+
+// Utwórz nowe poświadczenia
+Credential::create([
+    'ksef_environment_id' => $env->id,
+    'nip' => '1234567890',
+    'certificate_encrypted' => $cert,
+    'private_key_encrypted' => $key,
+    'certificate_password_encrypted' => 'hasło_do_certyfikatu',
+]);
+```
+
+### Problem: "Zmiana klucza APP_KEY uczyni dane niezrozumiałymi"
+
+**Przyczyna:** Zmieniłeś `APP_KEY` v1 na v2 — istniejące dane były szyfrowane kluczem v1.
+
+**Rozwiązanie:**
+
+```bash
+# Backup starego klucza (ZAWSZE!)
+cp .env .env.backup
+
+# Ponowne szyfrowanie danych nowym kluczem
+php artisan ksef:migrate-encryption --old-key=base64:oldkey=
+
+# Lub ręcznie:
+# 1. Pobierz dane z stary kluczem
+# 2. Zmień APP_KEY na nowy
+# 3. Zapisz dane ponownie
+```
+
+### Problem: "cURL error 60: SSL certificate problem"
+
+**Przyczyna:** Weryfikacja SSL w `KsefAuthClient` jest wyłączona (`'verify' => false`).
+
+**Rozwiązanie (production):**
+
+```php
+// src/Clients/KsefAuthClient.php - zmodyfikuj constructor
+$this->httpClient = new Client([
+    'timeout' => $timeout,
+    'verify' => true, // Włącz weryfikację
+    'cert' => ['/path/to/ca-bundle.crt'], // Ścieżka do CA bundle
+]);
+```
+
+### Problem: "UNIQUE constraint failed: ksef_credentials.ksef_environment_id, nip"
+
+**Przyczyna:** Próbujesz stworzyć drugi rekord dla tej samej pary (środowisko + nip).
+
+**Rozwiązanie:**
+
+```php
+// Zamiast create() — użyj firstOrCreate()
+Credential::firstOrCreate(
+    [
+        'ksef_environment_id' => $env->id,
+        'nip' => '1234567890',
+    ],
+    [
+        'certificate_encrypted' => $cert,
+        'private_key_encrypted' => $key,
+        'certificate_password_encrypted' => $password,
+    ]
+);
+```
+
+## FAQ
+
+### P: Czy mogę używać różne certyfikaty dla tego samego NIP w różnych środowiskach?
+
+**O:** Tak! Jeśli masz:
+- Certyfikat A → demo (nip + demo + cert_A)
+- Certyfikat B → prod (nip + prod + cert_B)
+
+System automatycznie wybierze poprawny rekord na podstawie środowiska.
+
+### P: Czy access_token jest automatycznie odświeżany?
+
+**O:** Nie w obecnej wersji. Musisz ręcznie wywoływać `$auth->login()` gdy token wygaśnie. Jeśli challenge token jest jeszcze ważny, logowanie jest szybkie.
+
+### P: Co zrobić ze starymi poświadczeniami (legacy environment/api_url)?
+
+**O:** Pola `environment` i `api_url` w `ksef_credentials` są opcjonalne dla backward compatibility. Nowe projekty powinny używać relacji:
+
+```php
+$cred = Credential::with('environment')->find($id);
+echo $cred->environment->api_url; // Pobranie URL z KsefEnvironment
+```
+
+### P: Czy mogę migrować istniejące kredencje z kolumn na foreign key?
+
+**O:** Tak, wykonaj artisan command (jeśli istnieje) lub ręcznie:
+
+```php
+Credential::all()->each(function($cred) {
+    $env = KsefEnvironment::byEnvironment($cred->environment)->first();
+    if($env) {
+        $cred->update(['ksef_environment_id' => $env->id]);
+    }
+});
+```
+
+### P: Jaka jest maksymalna wielkość faktury (XML)?
+
+**O:** Praktycznie bez limitu — kolumna `xml_encrypted` to `longText` (4GB w MySQL). Realistycznie: faktury XML są zwykle < 1MB.
+
+### P: Czy mogę wyłączyć automatyczne szyfrowanie pól?
+
+**O:** Nie z modelu Eloquent — szyfrowanie jest wbudowane. Jeśli chcesz przechowywać dane niezaszyfrowane, musisz zmienić migracje i usunąć `$encrypted` z modeli.
+
+### P: Czy paczka obsługuje offline mode (offline KSeF)?
+
+**O:** Nie w obecnej wersji. Offline mode wymaga lokalnego certyfikatu i jest obsługiwany przez dedykowany KSeF offline API.
+
+## Licencja
+
+MIT License — patrz plik [LICENSE](LICENSE)
+
+## Wkład (Contributing)
+
+Zapraszamy do współtworzenia! Zgłaszaj issues i pull requests na:
+https://github.com/labapawel/ksef-api
+
+## Kontakt i Wsparcie
+
+- **Issues:** https://github.com/labapawel/ksef-api/issues
+- **Email:** labapawel@gmail.com
+- **GitHub:** https://github.com/labapawel
+
+---
+
+**Ostatnia aktualizacja:** 2026-03-04  
+**Wersja:** 1.0.0  
+**Status:** Stable Release
 $invoice = DataFactory::createA

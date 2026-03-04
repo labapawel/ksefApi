@@ -36,6 +36,19 @@ return new class extends Migration {
             $table->timestamp('challenge_token_expires_at')->nullable(); // Kiedy challenge token wygasa
             $table->timestamp('token_expires_at')->nullable(); // Data wygaśnięcia access_token
             
+            // === DANE FIRMY WYSTAWIAJĄCEJ FAKTURY ===
+            $table->string('company_name')->nullable()->index(); // Nazwa firmy
+            $table->string('company_nip', 20)->nullable()->index(); // NIP firmy (może być inny niż nip w credentials)
+            $table->string('company_regon', 20)->nullable(); // REGON firmy
+            $table->string('street')->nullable(); // Ulica
+            $table->string('street_number')->nullable(); // Numer domu/budynku
+            $table->string('apartment_number')->nullable(); // Numer mieszkania/lokalu
+            $table->string('postal_code', 10)->nullable(); // Kod pocztowy
+            $table->string('city')->nullable()->index(); // Miasto
+            $table->string('email')->nullable(); // Email (poczta)
+            $table->string('phone')->nullable(); // Numer telefonu
+            $table->string('bank_account')->nullable(); // Numer konta bankowego (IBAN/NRB)
+            
             // Informacje o zakreśach i uprawnieniach
             $table->json('scopes')->nullable(); // Lista zakreśów (InvoiceWrite, InvoiceRead, itp.)
             $table->json('permissions')->nullable(); // Przydział uprawnień

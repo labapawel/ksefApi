@@ -113,6 +113,18 @@ Przechowuje zaszyfrowane poświadczenia KSeF dla kombinacji `ksef_environment_id
 | `challenge_token_received_at` | timestamp | ❌ | Kiedy otrzymano challenge token |
 | `challenge_token_expires_at` | timestamp | ❌ | Kiedy challenge token wygasa |
 | `token_expires_at` | timestamp | ❌ | Kiedy access token wygasa |
+| **Dane firmy wystawiającej faktury** | | | |
+| `company_name` | string(500) | ❌ | Pełna nazwa firmy |
+| `company_nip` | string(20) | ❌ | NIP firmy (wyszukiwalny) |
+| `company_regon` | string(20) | ❌ | Numer REGON firmy |
+| `street` | string(255) | ❌ | Nazwa ulicy |
+| `street_number` | string(20) | ❌ | Numer domu/budynku |
+| `apartment_number` | string(20) | ❌ | Numer mieszkania/lokalu |
+| `postal_code` | string(10) | ❌ | Kod pocztowy |
+| `city` | string(100) | ❌ | Miasto (wyszukiwalne) |
+| `email` | string(255) | ❌ | Adres e-mail |
+| `phone` | string(20) | ❌ | Numer telefonu |
+| `bank_account` | string(34) | ❌ | IBAN lub NRB konta bankowego |
 | `scopes` | json | ❌ | Zakresy uprawnień (InvoiceWrite, InvoiceRead) |
 | `permissions` | json | ❌ | Szczegółowe uprawnienia |
 | `meta` | json | ❌ | Dodatkowe metadane |
@@ -123,6 +135,8 @@ Przechowuje zaszyfrowane poświadczenia KSeF dla kombinacji `ksef_environment_id
 - UNIQUE: `(ksef_environment_id, nip)` - jedna para poświadczeń na środowisko+NIP
 - FOREIGN KEY: `ksef_environment_id` → `ksef_environments.id` (onDelete: RESTRICT)
 - INDEX: `nip`
+- INDEX: `company_nip` - do szybkiego wyszukiwania po NIP firmy
+- INDEX: `city` - do wyszukiwania po mieście
 
 **Uwagi:**
 - Wszystkie `*_encrypted` kolumny są automatycznie szyfrowane/deszyfrowane przez Laravel Encryption
@@ -130,6 +144,9 @@ Przechowuje zaszyfrowane poświadczenia KSeF dla kombinacji `ksef_environment_id
 - Challenge token jest ważny przez 10 minut (konfigurowalny przez `KSEF_CHALLENGE_TOKEN_LIFETIME`)
 - Legacy pola `environment` i `api_url` są opcjonalne - preferuj użycie relacji `environment()->api_url`
 - Foreign key `ksef_environment_id` nie pozwala usuwać środowiska (RESTRICT) aby zapobiec sieroceniu poświadczeń
+- Pola danych firmy (`company_name`, `company_nip`, itd.) są opcjonalne (nullable) do obsługi legacy danych
+- Pola adresowe są przydatne do generowania papierów factury/koresponencji
+- `bank_account` powinien przechowywać IBAN (34 znaki) lub NRB (28 znaki)
 
 ### Tabela `ksef_invoices`
 

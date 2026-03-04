@@ -520,4 +520,131 @@ class CredentialTest extends TestCase
         $this->assertCount(1, $credentials);
         $this->assertEquals('1111111111', $credentials->first()->nip);
     }
+
+    /**
+     * Test: Dane firmy wystawiającej faktury mogą być przechowywane i pobierane.
+     */
+    public function test_company_data_can_be_stored_and_retrieved(): void
+    {
+        $credential = Credential::create([
+            'environment' => 'demo',
+            'nip' => '1234567890',
+            'company_name' => 'Testowa Firma Sp. z o.o.',
+            'company_nip' => '7986711699',
+            'company_regon' => '014213425',
+            'street' => 'Marszałkowska',
+            'street_number' => '123',
+            'apartment_number' => 'A/4',
+            'postal_code' => '00-001',
+            'city' => 'Warszawa',
+            'email' => 'kontakt@testowa.pl',
+            'phone' => '+48123456789',
+            'bank_account' => 'PL61109010140000071219812874',
+        ]);
+
+        $credential = $credential->fresh();
+
+        $this->assertEquals('Testowa Firma Sp. z o.o.', $credential->company_name);
+        $this->assertEquals('7986711699', $credential->company_nip);
+        $this->assertEquals('014213425', $credential->company_regon);
+        $this->assertEquals('Marszałkowska', $credential->street);
+        $this->assertEquals('123', $credential->street_number);
+        $this->assertEquals('A/4', $credential->apartment_number);
+        $this->assertEquals('00-001', $credential->postal_code);
+        $this->assertEquals('Warszawa', $credential->city);
+        $this->assertEquals('kontakt@testowa.pl', $credential->email);
+        $this->assertEquals('+48123456789', $credential->phone);
+        $this->assertEquals('PL61109010140000071219812874', $credential->bank_account);
+    }
+
+    /**
+     * Test: Dane firmy mogą być opcjonalne (nullable).
+     */
+    public function test_company_data_fields_are_nullable(): void
+    {
+        $credential = Credential::create([
+            'environment' => 'demo',
+            'nip' => '1234567890',
+            // Nie ustawiamy żadnych pól firmy
+        ]);
+
+        $credential = $credential->fresh();
+
+        $this->assertNull($credential->company_name);
+        $this->assertNull($credential->company_nip);
+        $this->assertNull($credential->street);
+        $this->assertNull($credential->city);
+    }
+
+    /**
+     * Test: Wyszukiwanie poświadczeń po company_nip.
+     */
+    public function test_can_search_credentials_by_company_nip(): void
+    {
+        Credential::create([
+            'environment' => 'demo',
+            'nip' => '1111111111',
+            'company_nip' => '7986711699',
+            'company_name' => 'Firma A Sp. z o.o.',
+        ]);
+
+        Credential::create([
+            'environment' => 'demo',
+            'nip' => '2222222222',
+            'company_nip' => '5471740555',
+            'company_name' => 'Firma B Sp. z o.o.',
+        ]);
+
+        $credentials = Credential::where('company_nip', '7986711699')->get();
+
+        $this->assertCount(1, $credentials);
+        $this->assertEquals('Firma A Sp. z o.o.', $credentials->first()->company_name);
+    }
+
+    /**
+     * Test: Wyszukiwanie poświadczeń po mieście.
+     */
+    public function test_can_search_credentials_by_city(): void
+    {
+        Credential::create([
+            'environment' => 'demo',
+            'nip' => '1111111111',
+            'city' => 'Warszawa',
+            'company_name' => 'Firma Warszawa',
+        ]);
+
+        Credential::create([
+            'environment' => 'demo',
+            'nip' => '2222222222',
+            'city' => 'Kraków',
+            'company_name' => 'Firma Kraków',
+        ]);
+
+        $credentials = Credential::where('city', 'Warszawa')->get();
+
+        $this->assertCount(1, $credentials);
+        $this->assertEquals('Firma Warszawa', $credentials->first()->company_name);
+    }
+
+    /**
+     * Test: Dane firmy są przechowywane w bazie (bez szyfrowania).
+     */
+    public function test_company_data_is_stored_unencrypted_in_database(): void
+    {
+        $credential = Credential::create([
+            'environment' => 'demo',
+            'nip' => '1234567890',
+            'company_name' => 'Testowa Firma',
+            'city' => 'Warszawa',
+        ]);
+
+        // Pobranie bezpośrednio z bazy (nie przez model)
+        $row = \DB::table('ksef_credentials')
+            ->where('id', $credential->id)
+            ->first();
+
+        // Dane powinny być dostępne w formie jawnej
+        $this->assertEquals('Testowa Firma', $row->company_name);
+        $this->assertEquals('Warszawa', $row->city);
+    }
 }
