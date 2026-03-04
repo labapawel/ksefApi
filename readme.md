@@ -898,7 +898,7 @@ System automatycznie wybierze poprawny rekord na podstawie środowiska.
 **O:** Pola `environment` i `api_url` w `ksef_credentials` są opcjonalne dla backward compatibility. Nowe projekty powinny używać relacji:
 
 ```php
-$cred = Credential::with('environment')->find($id);
+$cred = Credential::with('ksefEnvironment')->find($id);
 echo $cred->environment->api_url; // Pobranie URL z KsefEnvironment
 ```
 

@@ -146,7 +146,7 @@ Przechowuje zaszyfrowane poświadczenia KSeF dla kombinacji `ksef_environment_id
 - Wszystkie `*_encrypted` kolumny są automatycznie szyfrowane/deszyfrowane przez Laravel Encryption
 - Klucz szyfrowania pochodzi z `APP_KEY` aplikacji Laravel
 - Challenge token jest ważny przez 10 minut (konfigurowalny przez `KSEF_CHALLENGE_TOKEN_LIFETIME`)
-- Legacy pola `environment` i `api_url` są opcjonalne - preferuj użycie relacji `environment()->api_url`
+- Legacy pola `environment` i `api_url` są opcjonalne - preferuj użycie relacji `ksefEnvironment()->api_url`
 - Foreign key `ksef_environment_id` nie pozwala usuwać środowiska (RESTRICT) aby zapobiec sieroceniu poświadczeń
 - Pola danych firmy (`company_name`, `company_nip`, itd.) są opcjonalne (nullable) do obsługi legacy danych
 - Pola adresowe są przydatne do generowania papierów factury/koresponencji

@@ -87,7 +87,7 @@ class Credential extends Model
      *
      * @return BelongsTo
      */
-    public function environment(): BelongsTo
+    public function ksefEnvironment(): BelongsTo
     {
         return $this->belongsTo(KsefEnvironment::class, 'ksef_environment_id');
     }
