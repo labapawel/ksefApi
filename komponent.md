@@ -1,5 +1,9 @@
 # Komponent KSeF API dla Laravel
 
+## Dokumentacja i plik wymiany
+dodatkowo zapisuj dokumentacje w katalogu ../test-ksefapicomponent/ksef jako readme.md
+dodaj plik wymiany dla instalatora, tu też będzie odpowiedź zwrotna w pliku opp.md
+
 ## Opis komponentu
 
 Pakiet Laravel do integracji z polskim systemem KSeF (Krajowy System e-Faktur). Zapewnia kompleksową obsługę:
@@ -418,41 +422,16 @@ KSEF_INVOICES_TABLE=ksef_invoices                 # nazwa tabeli
 
 ## Komendy Artisan
 
-Pakiet udostępnia własne komendy konsolowe do zarządzania konfiguracją.
+### Standardowe komendy Laravel
 
-### `ksef:generate-key`
-
-Generuje losowy, silny klucz szyfrowania APP_KEY (AES-256-CBC).
-
-**Składnia:**
+**Generowanie klucza szyfrowania:**
 ```bash
-php artisan ksef:generate-key [--show] [--force]
+php artisan key:generate
 ```
 
-**Opcje:**
-- `--show` - Wyświetl wygenerowany klucz bez zapisywania do pliku .env
-- `--force` - Wymuś nadpisanie istniejącego klucza (UWAGA: zaszyfrowane dane staną się nieosiągalne!)
+Pakiet używa standardowego `APP_KEY` z Laravel do szyfrowania poświadczeń.
 
-**Przykłady:**
-
-```bash
-# Wygeneruj i zapisz klucz do .env
-php artisan ksef:generate-key
-
-# Tylko wyświetl wygenerowany klucz (bez modyfikacji .env)
-php artisan ksef:generate-key --show
-
-# Nadpisz istniejący klucz (użyj ostrożnie!)
-php artisan ksef:generate-key --force
-```
-
-**Wyjście (przykład):**
-```
-Klucz szyfrowania został wygenerowany pomyślnie.
-
-UWAGA: Zachowaj kopię zapasową tego klucza w bezpiecznym miejscu!
-UWAGA: Zmiana klucza po zaszyfrowaniu danych uniemożliwi ich odczyt.
-```
+⚠️ **UWAGA:** Po zaszyfrowaniu danych zmiana klucza uniemożliwi ich odczyt!
 
 **Alternatywa Laravel:**
 Możesz także użyć standardowej komendy Laravel:

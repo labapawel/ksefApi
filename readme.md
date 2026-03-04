@@ -11,7 +11,7 @@ Repozytorium/paczka: `labapawel/ksef-api`
 composer require labapawel/ksef-api
 
 # 2. Wygeneruj klucz szyfrowania (jeśli nie masz APP_KEY)
-php artisan ksef:generate-key
+php artisan key:generate
 
 # 3. Uruchom migracje
 php artisan migrate
@@ -65,38 +65,13 @@ Paczka rejestruje też migracje przez `loadMigrationsFrom`, więc publikacja jes
 
 ## Generowanie klucza szyfrowania
 
-Pakiet używa standardowego mechanizmu Laravel Encryption z kluczem `APP_KEY`. Możesz wygenerować silny klucz na kilka sposobów:
-
-### Opcja 1: Komenda Laravel (zalecana)
+Pakiet używa standardowego mechanizmu Laravel Encryption z kluczem `APP_KEY`.
 
 ```bash
 php artisan key:generate
 ```
 
-### Opcja 2: Komenda KSeF (alternatywa)
-
-Pakiet udostępnia własną komendę do generowania klucza:
-
-```bash
-php artisan ksef:generate-key
-```
-
-**Opcje:**
-- `--show` - Wyświetl wygenerowany klucz bez zapisywania do .env
-- `--force` - Wymuś nadpisanie istniejącego klucza (UWAGA: zaszyfrowane dane staną się nieosiągalne!)
-
-**Przykłady użycia:**
-
-```bash
-# Wygeneruj i zapisz klucz do .env
-php artisan ksef:generate-key
-
-# Tylko wyświetl wygenerowany klucz
-php artisan ksef:generate-key --show
-
-# Nadpisz istniejący klucz (użyj ostrożnie!)
-php artisan ksef:generate-key --force
-```
+⚠️ **UWAGA:** Klucz `APP_KEY` służy do szyfrowania poświadczeń. Po zaszyfrowaniu danych zmiana klucza uniemożliwi ich odczyt!
 
 ⚠️ **Ostrzeżenie:** Zmiana klucza `APP_KEY` po zaszyfrowaniu danych w bazie uniemożliwi ich odczyt! Zawsze twórz backup klucza przed jego zmianą.
 
@@ -716,7 +691,7 @@ Pakiet automatycznie szyfruje wszystkie wrażliwe dane za pomocą Laravel Encryp
 
 - **Algorytm:** AES-256-CBC
 - **Klucz:** `APP_KEY` z konfiguracji Laravel
-- **Inicjalizacja:** `php artisan ksef:generate-key` lub `php artisan key:generate`
+- **Inicjalizacja:** `php artisan key:generate`
 
 ### Bezpieczeństwo producyjnego
 
